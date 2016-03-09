@@ -7,10 +7,11 @@ import (
 )
 
 type Server struct {
-	cfg  *Config
-	flow *flow.Flow
-	uc   *uc.Users
-	cl   *clock.Clock
+	cfg   *Config
+	flow  *flow.Flow
+	uc    *uc.Users
+	cl    *clock.Clock
+	shell *Shell
 }
 
 func New(cfg *Config, f *flow.Flow) *Server {
@@ -20,7 +21,18 @@ func New(cfg *Config, f *flow.Flow) *Server {
 		uc:   uc.NewUsers(),
 		cl:   clock.New(),
 	}
+
 	return svr
+}
+
+func (s *Server) runShell() {
+	shell, err := NewShell(s.cfg.DBPath)
+	if err != nil {
+		s.flow.Error(err)
+		return
+	}
+	s.shell = shell
+	_ = shell
 }
 
 func (s *Server) runHttp() {
@@ -36,4 +48,11 @@ func (s *Server) runHttp() {
 
 func (s *Server) Run() {
 	go s.runHttp()
+	go s.runShell()
+}
+
+func (s *Server) Close() {
+	if s.shell != nil {
+		s.shell.Close()
+	}
 }

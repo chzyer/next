@@ -20,6 +20,25 @@ type Next struct {
 	Shell  *shell.NextShell `flaglyHandler`
 }
 
+func main() {
+	fset := flagly.New(os.Args[0])
+	f := flow.New(0)
+	fset.Context(f)
+	if err := fset.Compile(&Next{}); err != nil {
+		logex.Fatal(err)
+	}
+
+	if err := fset.Run(os.Args[1:]); err != nil {
+		flagly.Exit(err)
+	}
+
+	err := f.Wait()
+	fset.Close()
+	if err != nil {
+		logex.Error(err)
+	}
+}
+
 // -----------------------------------------------------------------------------
 
 type NextGenKey struct{}
@@ -34,23 +53,4 @@ func (NextGenKey) FlaglyHandle(f *flow.Flow) error {
 
 func (NextGenKey) FlaglyDesc() string {
 	return "random generate aes key"
-}
-
-func main() {
-	fset := flagly.New(os.Args[0])
-	f := flow.New(0)
-	fset.Context(f)
-	if err := fset.Compile(&Next{}); err != nil {
-		logex.Fatal(err)
-	}
-
-	if err := fset.Run(os.Args[1:]); err != nil {
-		flagly.Exit(err)
-	}
-
-	err := f.Wait()
-	println("exit")
-	if err != nil {
-		logex.Error(err)
-	}
 }

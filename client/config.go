@@ -8,7 +8,9 @@ import (
 )
 
 type Config struct {
-	AesKey string
+	UserName string
+	Password string
+	AesKey   string
 
 	RemoteHost string `[0]`
 }
