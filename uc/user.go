@@ -3,6 +3,7 @@ package uc
 import (
 	"bytes"
 	"encoding/gob"
+	"fmt"
 	"math/rand"
 	"os"
 	"sync"
@@ -33,6 +34,19 @@ func (us *Users) LoginByName(name string, pswd string) *User {
 	for idx, u := range us.user {
 		if u.Name == name {
 			return us.Login(idx, pswd)
+		}
+	}
+	return nil
+}
+
+func (us *Users) Show() []User {
+	return us.user
+}
+
+func (us *Users) Find(username string) *User {
+	for _, u := range us.user {
+		if u.Name == username {
+			return &u
 		}
 	}
 	return nil
@@ -107,6 +121,11 @@ func NewUser(ui *UserInfo) *User {
 		UserInfo: ui,
 		Token:    GenToken(),
 	}
+}
+
+func (u User) String() string {
+	return fmt.Sprintf(`{Name: %v, Token: %v, Net: %v, IsAdmin: %v}`,
+		u.Name, u.Token, u.Net, u.IsAdmin)
 }
 
 // directly encode UserInfo to ignore other temporary variables

@@ -2,6 +2,7 @@ package ip
 
 // use for alloc ip address
 type DHCP struct {
+	IPNet     *IPNet
 	Gateway   IP
 	Boardcast IP
 	IpSize    int
@@ -22,6 +23,7 @@ func NewDHCP(ipnet *IPNet) *DHCP {
 	bitmap := make([]byte, (ipSize+7)/8)
 
 	dhcp := &DHCP{
+		IPNet:     ipnet,
 		Gateway:   gateway,
 		Boardcast: boardcast,
 		bitmap:    bitmap,

@@ -14,15 +14,6 @@ var (
 	ErrWrongUserPassword = logex.Define("wrong username or password")
 )
 
-type AuthResponse struct {
-	Gateway     string `json:"gateway"`
-	UserId      int    `json:"userId"`
-	MTU         int    `json:"mtu"`
-	IPNet       string `json:"ipnet"`
-	Token       string `json:"token"`
-	DataChannel string `json:"datachannel"`
-}
-
 func (h *HttpApi) Auth(w http.ResponseWriter, req *http.Request) {
 	var authReq *uc.AuthRequest
 	body, err := ioutil.ReadAll(req.Body)
@@ -46,6 +37,17 @@ func (h *HttpApi) Auth(w http.ResponseWriter, req *http.Request) {
 		h.replyError(w, ErrWrongUserPassword)
 		return
 	}
+	if u.Net == nil {
+		u.Net = h.svr.dhcp.Alloc()
+	}
+	ret := &uc.AuthResponse{
+		Gateway: h.svr.dhcp.IPNet.String(),
+		UserId:  int(u.Id),
+		INet:    u.Net.String(),
+		MTU:     h.svr.cfg.MTU,
+		Token:   u.Token,
+	}
+	h.reply(w, ret)
 }
 
 func (h *HttpApi) Time(w http.ResponseWriter, req *http.Request) {

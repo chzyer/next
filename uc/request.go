@@ -56,3 +56,12 @@ func (a *AuthRequest) Decode(key []byte, nowTime int64) (*AuthData, error) {
 		Passcode: token[:len(token)-8],
 	}, nil
 }
+
+type AuthResponse struct {
+	Gateway     string `json:"gateway"`
+	UserId      int    `json:"userId"`
+	MTU         int    `json:"mtu"`
+	INet        string `json:"inet"`
+	Token       string `json:"token"`
+	DataChannel string `json:"datachannel"`
+}

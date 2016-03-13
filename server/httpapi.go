@@ -22,9 +22,10 @@ type HttpApi struct {
 	users  *uc.Users
 	clock  *clock.Clock
 	server *http.Server
+	svr    *Server
 }
 
-func NewHttpApi(listen string, users *uc.Users, ct *clock.Clock, cfg *HttpApiConfig) *HttpApi {
+func NewHttpApi(listen string, users *uc.Users, ct *clock.Clock, cfg *HttpApiConfig, svr *Server) *HttpApi {
 	server := &http.Server{
 		Addr:           listen,
 		ReadTimeout:    10 * time.Second,
@@ -37,6 +38,7 @@ func NewHttpApi(listen string, users *uc.Users, ct *clock.Clock, cfg *HttpApiCon
 		server: server,
 		listen: listen,
 		users:  users,
+		svr:    svr,
 	}
 }
 

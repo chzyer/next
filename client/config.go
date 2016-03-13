@@ -8,6 +8,8 @@ import (
 )
 
 type Config struct {
+	Debug    bool
+	DevId    int
 	UserName string
 	Password string
 	AesKey   string
@@ -17,7 +19,7 @@ type Config struct {
 
 func (c *Config) FlaglyVerify() error {
 	if c.RemoteHost == "" {
-		return fmt.Errorf("remote is empty")
+		return fmt.Errorf("remoteHost is empty")
 	}
 	if !strings.Contains(c.RemoteHost, ":") {
 		c.RemoteHost += ":11311"
@@ -27,6 +29,12 @@ func (c *Config) FlaglyVerify() error {
 	}
 	if c.AesKey == "" {
 		return fmt.Errorf("aeskey is required")
+	}
+	if c.UserName == "" {
+		return fmt.Errorf("username is missing")
+	}
+	if c.Password == "" {
+		return fmt.Errorf("password is missing")
 	}
 	return nil
 }

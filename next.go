@@ -9,15 +9,15 @@ import (
 	"github.com/chzyer/flow"
 	"github.com/chzyer/next/client"
 	"github.com/chzyer/next/server"
-	"github.com/chzyer/next/shell"
+	"github.com/chzyer/readline"
 	"gopkg.in/logex.v1"
 )
 
 type Next struct {
-	Server *server.Config   `flaglyHandler`
-	Client *client.Config   `flaglyHandler`
-	GenKey *NextGenKey      `flaglyHandler`
-	Shell  *shell.NextShell `flaglyHandler`
+	Server *server.Config `flaglyHandler`
+	Client *client.Config `flaglyHandler`
+	GenKey *NextGenKey    `flaglyHandler`
+	Shell  *NextShell     `flaglyHandler`
 }
 
 func main() {
@@ -53,4 +53,19 @@ func (NextGenKey) FlaglyHandle(f *flow.Flow) error {
 
 func (NextGenKey) FlaglyDesc() string {
 	return "random generate aes key"
+}
+
+// -----------------------------------------------------------------------------
+
+type NextShell struct {
+	Sock string `default:"/tmp/next.sock"`
+}
+
+func (n *NextShell) FlaglyHandle(f *flow.Flow) error {
+	defer f.Close()
+	return readline.DialRemote("unix", n.Sock)
+}
+
+func (NextShell) FlaglyDesc() string {
+	return "shell mode to configure"
 }

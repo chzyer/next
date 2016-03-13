@@ -3,16 +3,39 @@ package ip
 import (
 	"encoding/binary"
 	"net"
+	"reflect"
+
+	"github.com/chzyer/flagly"
 
 	"gopkg.in/logex.v1"
 )
 
 type IP [4]byte
 
+func (i IP) String() string {
+	return i.IP().String()
+}
+
 type IPNet struct {
 	IP   IP         // network number
 	Mask net.IPMask // network mask
 }
+
+func (i *IPNet) ToNet() *net.IPNet {
+	return &net.IPNet{
+		IP:   i.IP.IP(),
+		Mask: i.Mask,
+	}
+}
+
+func (IPNet) ParseArgs(args []string) (reflect.Value, error) {
+	n, err := ParseCIDR(args[0])
+	if err != nil {
+		return flagly.NilValue, err
+	}
+	return reflect.ValueOf(n), nil
+}
+func (IPNet) Type() reflect.Type { return reflect.TypeOf(IPNet{}) }
 
 func (in *IPNet) String() string {
 	ipn := &net.IPNet{
