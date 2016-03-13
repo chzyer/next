@@ -3,6 +3,7 @@ package client
 import (
 	"github.com/chzyer/flow"
 	"github.com/chzyer/next/ip"
+	"github.com/chzyer/next/packet"
 	"github.com/chzyer/next/tunnel"
 	"github.com/chzyer/next/util/clock"
 	"gopkg.in/logex.v1"
@@ -15,6 +16,7 @@ type Client struct {
 }
 
 func New(cfg *Config, f *flow.Flow) *Client {
+	*f.Debug = cfg.Debug
 	cli := &Client{
 		cfg:  cfg,
 		flow: f,
@@ -51,6 +53,21 @@ func (c *Client) Run() {
 		c.flow.Error(err)
 		return
 	}
+
+	port := 13111
+	session := packet.NewSessionIV(
+		uint16(remoteCfg.UserId), uint16(port), []byte(remoteCfg.Token))
+	in := make(chan *packet.Packet)
+	out := make(chan *packet.Packet)
+
+	dc, err := NewDataChannel("nexts", c.flow.Fork(0), session, in, out)
+	if err != nil {
+		c.flow.Error(err)
+		return
+	}
+	println("ok")
+
+	_ = dc
 	_ = tun
 
 }

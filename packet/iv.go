@@ -29,6 +29,7 @@ type SessionIV struct {
 	Rand   *rand.Rand
 }
 
+// port = svr.port
 func NewSessionIV(userId, port uint16, token []byte) *SessionIV {
 	if len(token) != 30 { // we only need aes256
 		panic("please make sure len(token) == 30")

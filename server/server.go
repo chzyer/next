@@ -3,6 +3,7 @@ package server
 import (
 	"github.com/chzyer/flow"
 	"github.com/chzyer/next/ip"
+	"github.com/chzyer/next/packet"
 	"github.com/chzyer/next/uc"
 	"github.com/chzyer/next/util/clock"
 )
@@ -17,6 +18,7 @@ type Server struct {
 }
 
 func New(cfg *Config, f *flow.Flow) *Server {
+	*f.Debug = cfg.Debug
 	svr := &Server{
 		cfg:  cfg,
 		flow: f,
@@ -54,6 +56,23 @@ func (s *Server) runHttp() {
 func (s *Server) Run() {
 	go s.runHttp()
 	go s.runShell()
+
+	in := make(chan *packet.Packet)
+	out := make(chan *packet.Packet)
+	dc, err := NewDataChannel(13111, s.flow.Fork(0), s, in, out)
+	if err != nil {
+		s.flow.Error(err)
+		return
+	}
+	go dc.loop()
+}
+
+func (s *Server) GetUserToken(id int) string {
+	u := s.uc.FindId(id)
+	if u == nil {
+		return ""
+	}
+	return u.Token
 }
 
 func (s *Server) Close() {

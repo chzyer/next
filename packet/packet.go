@@ -84,17 +84,22 @@ func Read(s *SessionIV, r io.Reader) (*Packet, error) {
 	// 3. aes(crc32(payload+type), token, iv) [20: 24]
 	// 4. len(payload+type) [24: 26]
 	// 5. aes(payload+type, token, iv) [26:]
+	iv, err := ReadIV(r)
+	if err != nil {
+		return nil, logex.Trace(err)
+	}
+	return ReadWithIV(s, iv, r)
+}
 
-	headerSize := 16 + 8 + 2 // 1 + 2 + 3 + 4 = 26
-	header := make([]byte, headerSize)
+func ReadWithIV(s *SessionIV, iv *IV, r io.Reader) (*Packet, error) {
+	header := make([]byte, 8+2) // s2 + s3 + s4
 	if _, err := io.ReadFull(r, header); err != nil {
 		return nil, logex.Trace(err)
 	}
-	iv := ParseIV(header[:16])
 
-	checksum := binary.BigEndian.Uint32(header[16:20])
-	aesCS := header[20:24]
-	length := binary.BigEndian.Uint16(header[24:26])
+	checksum := binary.BigEndian.Uint32(header[0:4])
+	aesCS := header[4:8]
+	length := binary.BigEndian.Uint16(header[8:10])
 
 	// at least we have `type`
 	if length < 1 || length > uint16(MaxPayloadLength) {
