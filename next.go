@@ -21,20 +21,18 @@ type Next struct {
 }
 
 func main() {
-	fset := flagly.New(os.Args[0])
 	f := flow.New(0)
-	fset.Context(f)
-	if err := fset.Compile(&Next{}); err != nil {
+	fset, err := flagly.Compile(os.Args[0], &Next{})
+	if err != nil {
 		logex.Fatal(err)
 	}
+	fset.Context(f)
 
 	if err := fset.Run(os.Args[1:]); err != nil {
 		flagly.Exit(err)
 	}
 
-	err := f.Wait()
-	fset.Close()
-	if err != nil {
+	if err := f.Wait(); err != nil {
 		logex.Error(err)
 	}
 }
@@ -67,5 +65,5 @@ func (n *NextShell) FlaglyHandle(f *flow.Flow) error {
 }
 
 func (NextShell) FlaglyDesc() string {
-	return "shell mode to configure"
+	return "shell mode"
 }

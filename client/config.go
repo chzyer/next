@@ -4,11 +4,16 @@ import (
 	"fmt"
 	"strings"
 
+	"gopkg.in/logex.v1"
+
 	"github.com/chzyer/flow"
 )
 
 type Config struct {
-	Debug    bool
+	Debug      bool
+	DebugStack bool `default:"true"`
+	DebugFlow  bool
+
 	DevId    int
 	UserName string
 	Password string
@@ -36,6 +41,7 @@ func (c *Config) FlaglyVerify() error {
 	if c.Password == "" {
 		return fmt.Errorf("password is missing")
 	}
+	logex.ShowCode = c.DebugStack
 	return nil
 }
 

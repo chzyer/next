@@ -3,6 +3,8 @@ package uc
 import (
 	"crypto/rand"
 	"encoding/binary"
+	"strconv"
+	"strings"
 
 	"github.com/chzyer/next/crypto"
 	"gopkg.in/logex.v1"
@@ -64,4 +66,16 @@ type AuthResponse struct {
 	INet        string `json:"inet"`
 	Token       string `json:"token"`
 	DataChannel string `json:"datachannel"`
+}
+
+func (a *AuthResponse) GetDataChannelPort() int {
+	idx := strings.LastIndex(a.DataChannel, ":")
+	if idx >= 0 {
+		port, err := strconv.Atoi(a.DataChannel[idx+1:])
+		if err != nil {
+			return -1
+		}
+		return port
+	}
+	return -1
 }

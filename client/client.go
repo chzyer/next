@@ -2,26 +2,57 @@ package client
 
 import (
 	"github.com/chzyer/flow"
-	"github.com/chzyer/next/ip"
 	"github.com/chzyer/next/packet"
-	"github.com/chzyer/next/tunnel"
+	"github.com/chzyer/next/uc"
 	"github.com/chzyer/next/util/clock"
-	"gopkg.in/logex.v1"
 )
 
 type Client struct {
 	cfg   *Config
 	clock *clock.Clock
 	flow  *flow.Flow
+	tun   *Tun
 }
 
 func New(cfg *Config, f *flow.Flow) *Client {
-	*f.Debug = cfg.Debug
+	*f.Debug = cfg.DebugFlow
 	cli := &Client{
 		cfg:  cfg,
 		flow: f,
 	}
 	return cli
+}
+
+func (c *Client) Close() {
+	c.flow.Close()
+}
+
+func (c *Client) initDataChannel(remoteCfg *uc.AuthResponse) (in, out chan *packet.Packet, err error) {
+	port := remoteCfg.GetDataChannelPort()
+	session := packet.NewSessionIV(
+		uint16(remoteCfg.UserId), uint16(port), []byte(remoteCfg.Token))
+
+	in = make(chan *packet.Packet)
+	out = make(chan *packet.Packet)
+	dc, err := NewDataChannel(
+		remoteCfg.DataChannel, c.flow, session, in, out)
+	if err != nil {
+		return nil, nil, err
+	}
+	_ = dc
+
+	return in, out, nil
+}
+
+func (c *Client) initTun(remoteCfg *uc.AuthResponse) (in, out chan []byte, err error) {
+	in = make(chan []byte)
+	out = make(chan []byte)
+	tun, err := newTun(c.flow, remoteCfg, c.cfg)
+	if err != nil {
+		return nil, nil, err
+	}
+	tun.Run(in, out)
+	return in, out, nil
 }
 
 func (c *Client) Run() {
@@ -35,39 +66,33 @@ func (c *Client) Run() {
 		c.flow.Error(err)
 		return
 	}
-	logex.Struct(remoteCfg)
 
-	ipnet, err := ip.ParseCIDR(remoteCfg.Gateway)
-	if err != nil {
-		c.flow.Error(err)
-		return
-	}
-	ipnet.IP = ip.ParseIP(remoteCfg.INet)
-	tun, err := tunnel.New(&tunnel.Config{
-		DevId:   c.cfg.DevId,
-		Gateway: ipnet.ToNet(),
-		MTU:     remoteCfg.MTU,
-		Debug:   c.cfg.Debug,
-	})
+	dcIn, dcOut, err := c.initDataChannel(remoteCfg)
 	if err != nil {
 		c.flow.Error(err)
 		return
 	}
 
-	port := 13111
-	session := packet.NewSessionIV(
-		uint16(remoteCfg.UserId), uint16(port), []byte(remoteCfg.Token))
-	in := make(chan *packet.Packet)
-	out := make(chan *packet.Packet)
-
-	dc, err := NewDataChannel("nexts", c.flow.Fork(0), session, in, out)
+	tunIn, tunOut, err := c.initTun(remoteCfg)
 	if err != nil {
 		c.flow.Error(err)
 		return
 	}
+
+	go func() {
+	loop:
+		for {
+			select {
+			case <-c.flow.IsClose():
+				break loop
+			case data := <-tunOut:
+				dcIn <- packet.New(data, packet.Data)
+			case pRecv := <-dcOut:
+				tunIn <- pRecv.Payload
+			}
+		}
+	}()
+
 	println("ok")
-
-	_ = dc
-	_ = tun
 
 }

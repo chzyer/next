@@ -3,6 +3,8 @@ package server
 import (
 	"errors"
 
+	"gopkg.in/logex.v1"
+
 	"github.com/chzyer/flagly"
 	"github.com/chzyer/flow"
 	"github.com/chzyer/next/ip"
@@ -13,7 +15,9 @@ func init() {
 }
 
 type Config struct {
-	Debug bool `desc:"turn on debug"`
+	Debug      bool `desc:"turn on debug"`
+	DebugStack bool `default:"true"`
+	DebugFlow  bool
 
 	HTTP     string    `desc:"listen http port" default:":11311"`
 	HTTPAes  string    `desc:"http aes key; required"`
@@ -36,13 +40,13 @@ func (c *Config) FlaglyVerify() error {
 	if c.DBPath == "" {
 		return errors.New("dbpath is empty")
 	}
+	logex.ShowCode = c.DebugStack
 	return nil
 }
 
 func (c *Config) FlaglyHandle(f *flow.Flow, h *flagly.Handler) error {
 	srv := New(c, f)
 	srv.Run()
-	h.SetOnExit(srv.Close)
 	return nil
 }
 

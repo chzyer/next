@@ -3,8 +3,10 @@ package server
 import (
 	"bufio"
 	"bytes"
-	"fmt"
 	"net"
+	"strconv"
+	"strings"
+	"time"
 
 	"gopkg.in/logex.v1"
 
@@ -19,73 +21,135 @@ var (
 
 type DataChannelDelegate interface {
 	GetUserToken(id int) string
+	GetUserChannel(id int) (in, out chan *packet.Packet, err error)
 }
 
-type DataChannel struct {
-	ln       net.Listener
-	flow     *flow.Flow
-	port     int
-	delegate DataChannelDelegate
-	in       chan *packet.Packet
-	out      chan *packet.Packet
+type MultiDataChannel struct {
+	flow      *flow.Flow
+	delegate  DataChannelDelegate
+	listeners []*DataChannelListener
 }
 
-func NewDataChannel(port int, f *flow.Flow, d DataChannelDelegate,
-	in, out chan *packet.Packet) (*DataChannel, error) {
-
-	ln, err := net.Listen("tcp", fmt.Sprintf(":%v", port))
-	if err != nil {
-		return nil, err
-	}
-	dc := &DataChannel{
-		port:     port,
-		ln:       ln,
-		delegate: d,
+func NewMultiDataChannel(f *flow.Flow, d DataChannelDelegate) *MultiDataChannel {
+	m := &MultiDataChannel{
 		flow:     f,
-		in:       in,
-		out:      out,
+		delegate: d,
 	}
-	f.SetOnClose(dc.Close)
-	return dc, nil
+	return m
 }
 
-func (d *DataChannel) readLoop(f *flow.Flow, s *packet.SessionIV, conn net.Conn) {
-	f.Add(1)
-	defer f.DoneAndClose()
-	buf := bufio.NewReader(conn)
-loop:
-	for {
-		p, err := packet.Read(s, buf)
-		if err != nil {
-			break
-		}
-		select {
-		case <-f.IsClose():
-			break loop
-		case d.out <- p:
-		}
-	}
+func (m *MultiDataChannel) GetDataChannel() int {
+	return m.listeners[0].GetPort()
 }
 
-func (d *DataChannel) writeLoop(f *flow.Flow, s *packet.SessionIV, conn net.Conn) {
-	f.Add(1)
-	defer f.DoneAndClose()
+func (m *MultiDataChannel) Start(n int) {
+	m.flow.Add(1)
+	defer m.flow.DoneAndClose()
+
+	started := 0
 loop:
-	for {
-		select {
-		case <-f.IsClose():
-			break loop
-		case msg := <-d.in:
-			_, err := conn.Write(msg.Marshal(s))
-			if err != nil {
-				logex.Error(err)
+	for !m.flow.IsClosed() {
+		if started < n {
+			m.AddChannelListen()
+			started++
+		} else {
+			select {
+			case <-m.flow.IsClose():
 				break loop
+			case <-time.After(time.Second):
 			}
 		}
 	}
 }
 
-func (d *DataChannel) checkAuth(conn net.Conn) (*packet.SessionIV, error) {
+func (m *MultiDataChannel) AddChannelListen() error {
+	ln, err := NewDataChannelListener(m.flow, m.delegate)
+	if err != nil {
+		return logex.Trace(err)
+	}
+	m.listeners = append(m.listeners, ln)
+
+	go ln.Serve()
+	return nil
+}
+
+// -----------------------------------------------------------------------------
+
+type DataChannelListener struct {
+	ln       net.Listener
+	flow     *flow.Flow
+	delegate DataChannelDelegate
+	port     int
+}
+
+func NewDataChannelListener(f *flow.Flow, d DataChannelDelegate) (*DataChannelListener, error) {
+	ln, err := net.Listen("tcp", ":0")
+	if err != nil {
+		return nil, err
+	}
+	addr := ln.Addr().String()
+	if idx := strings.LastIndex(addr, ":"); idx > 0 {
+		addr = addr[idx+1:]
+	}
+	port, err := strconv.Atoi(addr)
+	if err != nil {
+		panic(err)
+	}
+	dcln := &DataChannelListener{
+		ln:       ln,
+		port:     port,
+		delegate: d,
+	}
+	f.ForkTo(&dcln.flow, dcln.Close)
+	return dcln, nil
+}
+
+func (d *DataChannelListener) GetPort() int {
+	return d.port
+}
+
+func (d *DataChannelListener) Accept() (*DataChannel, error) {
+	conn, err := d.ln.Accept()
+	if err != nil {
+		return nil, logex.Trace(err)
+	}
+	session, err := d.checkAuth(conn)
+	if err != nil {
+		return nil, logex.Trace(err)
+	}
+	_, _, err = d.delegate.GetUserChannel(int(session.UserId))
+	if err != nil {
+		return nil, logex.Trace(err)
+	}
+
+	dc, err := NewDataChannel(d.flow, conn, session)
+	if err != nil {
+		return nil, logex.Trace(err)
+	}
+
+	return dc, nil
+}
+
+func (d *DataChannelListener) Serve() {
+	d.flow.Add(1)
+	defer d.flow.DoneAndClose()
+
+	for !d.flow.IsClosed() {
+		dc, err := d.Accept()
+		if err != nil {
+			break
+		}
+		in, out, _ := d.delegate.GetUserChannel(dc.GetUserId())
+		go dc.Run(in, out)
+	}
+}
+
+func (d *DataChannelListener) Close() {
+	d.ln.Close()
+	d.flow.Close()
+}
+
+func (d *DataChannelListener) checkAuth(conn net.Conn) (*packet.SessionIV, error) {
 	iv, err := packet.ReadIV(conn)
 	if err != nil {
 		return nil, logex.Trace(err)
@@ -111,43 +175,82 @@ func (d *DataChannel) checkAuth(conn net.Conn) (*packet.SessionIV, error) {
 		return nil, packet.ErrInvalidToken.Trace()
 	}
 
-	p, err = packet.New(s.Token, packet.AuthResp)
-	if err != nil {
-		panic(err)
-	}
+	p = packet.New(s.Token, packet.AuthResp)
 	if _, err := conn.Write(p.Marshal(s)); err != nil {
 		return nil, logex.Trace(err)
 	}
 	return s, nil
 }
 
-func (d *DataChannel) loop() {
+// -----------------------------------------------------------------------------
+
+type DataChannel struct {
+	flow    *flow.Flow
+	conn    net.Conn
+	session *packet.SessionIV
+}
+
+func NewDataChannel(f *flow.Flow, conn net.Conn, s *packet.SessionIV) (*DataChannel, error) {
+	dc := &DataChannel{
+		conn:    conn,
+		session: s,
+	}
+	f.ForkTo(&dc.flow, dc.Close)
+	return dc, nil
+}
+
+func (d *DataChannel) GetSession() *packet.SessionIV {
+	return d.session
+}
+
+func (d *DataChannel) readLoop(out chan *packet.Packet) {
 	d.flow.Add(1)
 	defer d.flow.DoneAndClose()
-
+	buf := bufio.NewReader(d.conn)
+loop:
 	for {
-		conn, err := d.ln.Accept()
+		p, err := packet.Read(d.session, buf)
 		if err != nil {
 			logex.Error(err)
-			return
+			break
 		}
-		session, err := d.checkAuth(conn)
-		if err != nil {
-			logex.Error(err)
-			conn.Close()
-			continue
+		select {
+		case <-d.flow.IsClose():
+			break loop
+		case out <- p:
+			logex.Info(p)
 		}
-		f := d.flow.Fork(0)
-		f.SetOnClose(func() {
-			conn.Close()
-		})
-
-		go d.readLoop(f, session, conn)
-		go d.writeLoop(f, session, conn)
 	}
 }
 
+func (d *DataChannel) writeLoop(in chan *packet.Packet) {
+	d.flow.Add(1)
+	defer d.flow.DoneAndClose()
+loop:
+	for {
+		select {
+		case <-d.flow.IsClose():
+			break loop
+		case msg := <-in:
+			_, err := d.conn.Write(msg.Marshal(d.session))
+			if err != nil {
+				logex.Error(err)
+				break loop
+			}
+		}
+	}
+}
+
+func (d *DataChannel) GetUserId() int {
+	return int(d.session.UserId)
+}
+
+func (d *DataChannel) Run(in, out chan *packet.Packet) {
+	go d.writeLoop(out)
+	go d.readLoop(in)
+}
+
 func (d *DataChannel) Close() {
-	d.ln.Close()
+	d.conn.Close()
 	d.flow.Close()
 }

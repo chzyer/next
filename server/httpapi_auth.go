@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"strings"
 
 	"github.com/chzyer/next/uc"
 
@@ -38,14 +39,22 @@ func (h *HttpApi) Auth(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if u.Net == nil {
-		u.Net = h.svr.dhcp.Alloc()
+		u.Net = h.delegate.AllocIP()
 	}
+
+	host := req.Host
+	if idx := strings.Index(host, ":"); idx > 0 {
+		host = host[:idx]
+	}
+	h.delegate.OnNewUser(int(u.Id))
+
 	ret := &uc.AuthResponse{
-		Gateway: h.svr.dhcp.IPNet.String(),
-		UserId:  int(u.Id),
-		INet:    u.Net.String(),
-		MTU:     h.svr.cfg.MTU,
-		Token:   u.Token,
+		Gateway:     h.delegate.GetGateway().String(),
+		UserId:      int(u.Id),
+		INet:        u.Net.String(),
+		MTU:         h.delegate.GetMTU(),
+		Token:       u.Token,
+		DataChannel: h.delegate.GetDataChannel(host),
 	}
 	h.reply(w, ret)
 }

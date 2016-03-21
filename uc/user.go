@@ -10,7 +10,12 @@ import (
 	"time"
 
 	"github.com/chzyer/next/ip"
+	"github.com/chzyer/next/packet"
 	"gopkg.in/logex.v1"
+)
+
+var (
+	ErrUserNotFound = logex.Define("user not found")
 )
 
 type Users struct {
@@ -114,6 +119,8 @@ type User struct {
 	*UserInfo
 	Net   *ip.IP
 	Token string
+	in    chan *packet.Packet
+	out   chan *packet.Packet
 }
 
 func NewUser(ui *UserInfo) *User {
@@ -123,9 +130,19 @@ func NewUser(ui *UserInfo) *User {
 	}
 }
 
+func (u *User) GetChannel() (in, out chan *packet.Packet) {
+	if u.in == nil {
+		u.in = make(chan *packet.Packet)
+	}
+	if u.out == nil {
+		u.out = make(chan *packet.Packet)
+	}
+	return u.in, u.out
+}
+
 func (u User) String() string {
-	return fmt.Sprintf(`{Name: %v, Token: %v, Net: %v, IsAdmin: %v}`,
-		u.Name, u.Token, u.Net, u.IsAdmin)
+	return fmt.Sprintf(`{Id: %v, Name: %v, Token: %v, Net: %v, IsAdmin: %v}`,
+		u.Id, u.Name, u.Token, u.Net, u.IsAdmin)
 }
 
 // directly encode UserInfo to ignore other temporary variables

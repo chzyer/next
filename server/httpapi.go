@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/chzyer/next/ip"
 	"github.com/chzyer/next/uc"
 	"github.com/chzyer/next/util/clock"
 )
@@ -17,15 +18,23 @@ type HttpApiConfig struct {
 }
 
 type HttpApi struct {
-	listen string
-	cfg    *HttpApiConfig
-	users  *uc.Users
-	clock  *clock.Clock
-	server *http.Server
-	svr    *Server
+	listen   string
+	cfg      *HttpApiConfig
+	users    *uc.Users
+	clock    *clock.Clock
+	server   *http.Server
+	delegate HttpDelegate
 }
 
-func NewHttpApi(listen string, users *uc.Users, ct *clock.Clock, cfg *HttpApiConfig, svr *Server) *HttpApi {
+type HttpDelegate interface {
+	AllocIP() *ip.IP
+	GetGateway() *ip.IPNet
+	GetMTU() int
+	GetDataChannel(string) string
+	OnNewUser(userId int)
+}
+
+func NewHttpApi(listen string, users *uc.Users, ct *clock.Clock, cfg *HttpApiConfig, delegate HttpDelegate) *HttpApi {
 	server := &http.Server{
 		Addr:           listen,
 		ReadTimeout:    10 * time.Second,
@@ -33,12 +42,12 @@ func NewHttpApi(listen string, users *uc.Users, ct *clock.Clock, cfg *HttpApiCon
 		MaxHeaderBytes: 1 << 10,
 	}
 	return &HttpApi{
-		cfg:    cfg,
-		clock:  ct,
-		server: server,
-		listen: listen,
-		users:  users,
-		svr:    svr,
+		cfg:      cfg,
+		clock:    ct,
+		server:   server,
+		listen:   listen,
+		users:    users,
+		delegate: delegate,
 	}
 }
 

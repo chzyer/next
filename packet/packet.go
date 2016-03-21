@@ -30,7 +30,15 @@ type Packet struct {
 	Payload []byte
 }
 
-func New(payload []byte, t Type) (*Packet, error) {
+func New(payload []byte, t Type) *Packet {
+	p, err := newPacket(payload, t)
+	if err != nil {
+		panic(err)
+	}
+	return p
+}
+
+func newPacket(payload []byte, t Type) (*Packet, error) {
 	if t.IsInvalid() {
 		return nil, ErrInvalidType.Format(int(t))
 	}

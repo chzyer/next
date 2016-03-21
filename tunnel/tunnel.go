@@ -3,9 +3,13 @@ package tunnel
 import (
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"os/exec"
+	"strings"
+	"syscall"
+	"time"
 
 	"gopkg.in/logex.v1"
 )
@@ -20,8 +24,16 @@ type Config struct {
 
 type Instance struct {
 	*Config
-	Name string
-	fd   *os.File
+	Name          string
+	fd            *os.File
+	stopChan      chan struct{}
+	readChan      chan []byte
+	readReplyChan chan reply
+}
+
+type reply struct {
+	n   int
+	err error
 }
 
 func New(cfg *Config) (*Instance, error) {
@@ -33,9 +45,16 @@ func New(cfg *Config) (*Instance, error) {
 		cfg.NameLayout = "utun%d"
 	}
 	t := &Instance{
-		Config: cfg,
-		fd:     fd,
-		Name:   fmt.Sprintf(cfg.NameLayout, cfg.DevId),
+		Config:        cfg,
+		fd:            fd,
+		Name:          fmt.Sprintf(cfg.NameLayout, cfg.DevId),
+		stopChan:      make(chan struct{}),
+		readChan:      make(chan []byte),
+		readReplyChan: make(chan reply),
+	}
+	go t.loop()
+	if err := syscall.SetNonblock(int(fd.Fd()), true); err != nil {
+		return nil, logex.Trace(err)
 	}
 	if err := t.setupTun(); err != nil {
 		return nil, logex.Trace(err)
@@ -43,8 +62,40 @@ func New(cfg *Config) (*Instance, error) {
 	return t, nil
 }
 
+var errInfo = "resource temporarily unavailable"
+
+func (t *Instance) loop() {
+main:
+	for {
+		select {
+		case b := <-t.readChan:
+			for {
+				n, err := t.fd.Read(b)
+				if err != nil && strings.Contains(err.Error(), errInfo) {
+					select {
+					case <-time.After(500 * time.Millisecond):
+					case <-t.stopChan:
+						return
+					}
+				} else {
+					t.readReplyChan <- reply{n, err}
+					continue main
+				}
+			}
+		case <-t.stopChan:
+			return
+		}
+	}
+}
+
 func (t *Instance) Read(b []byte) (int, error) {
-	return t.fd.Read(b)
+	t.readChan <- b
+	select {
+	case r := <-t.readReplyChan:
+		return r.n, r.err
+	case <-t.stopChan:
+		return 0, io.EOF
+	}
 }
 
 func (t *Instance) Write(b []byte) (int, error) {
@@ -52,6 +103,7 @@ func (t *Instance) Write(b []byte) (int, error) {
 }
 
 func (t *Instance) Close() error {
+	close(t.stopChan)
 	return t.fd.Close()
 }
 
