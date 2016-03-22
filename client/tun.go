@@ -3,8 +3,8 @@ package client
 import (
 	"github.com/chzyer/flow"
 	"github.com/chzyer/next/ip"
-	"github.com/chzyer/next/tunnel"
 	"github.com/chzyer/next/uc"
+	"github.com/chzyer/tunnel"
 	"gopkg.in/logex.v1"
 )
 
@@ -22,7 +22,8 @@ func newTun(f *flow.Flow, remoteCfg *uc.AuthResponse, cfg *Config) (*Tun, error)
 
 	tun, err := tunnel.New(&tunnel.Config{
 		DevId:   cfg.DevId,
-		Gateway: ipnet.ToNet(),
+		Gateway: ipnet.IP.IP(),
+		Mask:    ipnet.Mask,
 		MTU:     remoteCfg.MTU,
 		Debug:   cfg.Debug,
 	})
