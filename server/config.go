@@ -18,6 +18,7 @@ type Config struct {
 	Debug      bool `desc:"turn on debug"`
 	DebugStack bool `default:"true"`
 	DebugFlow  bool
+	DebugTun   bool
 
 	HTTP     string    `desc:"listen http port" default:":11311"`
 	HTTPAes  string    `desc:"http aes key; required"`
@@ -26,6 +27,7 @@ type Config struct {
 	Sock     string    `desc:"unixsock for interactive with" default:"/tmp/next.sock"`
 	MTU      int       `default:"1500"`
 	Net      *ip.IPNet `default:"10.8.0.1/24"`
+	DevId    int
 
 	DBPath string `desc:"filepath to persist user info" default:"nextuser"`
 }
@@ -40,6 +42,8 @@ func (c *Config) FlaglyVerify() error {
 	if c.DBPath == "" {
 		return errors.New("dbpath is empty")
 	}
+
+	flow.DefaultDebug = c.DebugFlow
 	logex.ShowCode = c.DebugStack
 	return nil
 }

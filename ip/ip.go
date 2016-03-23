@@ -12,6 +12,18 @@ import (
 
 type IP [4]byte
 
+func NewIP(b []byte) (ret IP) {
+	copy(ret[:], b)
+	return
+}
+
+func (i IP) Equal(i2 IP) bool {
+	return i2[3] == i2[3] &&
+		i2[2] == i2[2] &&
+		i2[1] == i2[1] &&
+		i2[0] == i2[0]
+}
+
 func (i IP) String() string {
 	return i.IP().String()
 }

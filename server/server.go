@@ -19,12 +19,13 @@ type Server struct {
 	cl    *clock.Clock
 	shell *Shell
 	dhcp  *ip.DHCP
+	tun   *Tun
 
-	dataChannel *MultiDataChannel
+	controllerGroup *ControllerGroup
+	dataChannel     *MultiDataChannel
 }
 
 func New(cfg *Config, f *flow.Flow) *Server {
-	*f.Debug = cfg.DebugFlow
 	svr := &Server{
 		cfg:  cfg,
 		flow: f,
@@ -74,7 +75,24 @@ func (s *Server) loadDataChannel() {
 	s.dataChannel.Start(1)
 }
 
+func (s *Server) initAndRunTun() {
+	tun, err := newTun(s.flow, s.cfg)
+	if err != nil {
+		s.flow.Error(err)
+		return
+	}
+	tun.Run()
+	s.tun = tun
+}
+
+func (s *Server) initControllerGroup() {
+	s.controllerGroup = NewControllerGroup(s.flow, s.uc, s.tun.WriteChan())
+	go s.controllerGroup.RunDeliver(s.tun.ReadChan())
+}
+
 func (s *Server) Run() {
+	s.initAndRunTun()
+	s.initControllerGroup() // after tun
 	go s.runHttp()
 	go s.runShell()
 	go s.loadDataChannel()
@@ -90,15 +108,18 @@ func (s *Server) OnNewUser(userId int) {
 		return
 	}
 	logex.Infof("new user is coming: Id: %v, Name: %v", u.Id, u.Name)
+	s.controllerGroup.UserLogin(u)
 }
 
-func (s *Server) GetUserChannel(id int) (in, out chan *packet.Packet, err error) {
+// controller -> user -> datachannel
+func (s *Server) GetUserChannelFromDataChannel(id int) (
+	fromUser <-chan *packet.Packet, toUser chan<- *packet.Packet, err error) {
 	u := s.uc.FindId(id)
 	if u == nil {
 		err = uc.ErrUserNotFound.Trace()
 		return
 	}
-	in, out = u.GetChannel()
+	fromUser, toUser = u.GetFromDataChannel()
 	return
 }
 

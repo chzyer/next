@@ -21,7 +21,8 @@ var (
 
 type DataChannelDelegate interface {
 	GetUserToken(id int) string
-	GetUserChannel(id int) (in, out chan *packet.Packet, err error)
+	GetUserChannelFromDataChannel(id int) (
+		fromUser <-chan *packet.Packet, toUser chan<- *packet.Packet, err error)
 }
 
 type MultiDataChannel struct {
@@ -117,7 +118,7 @@ func (d *DataChannelListener) Accept() (*DataChannel, error) {
 	if err != nil {
 		return nil, logex.Trace(err)
 	}
-	_, _, err = d.delegate.GetUserChannel(int(session.UserId))
+	_, _, err = d.delegate.GetUserChannelFromDataChannel(int(session.UserId))
 	if err != nil {
 		return nil, logex.Trace(err)
 	}
@@ -139,8 +140,9 @@ func (d *DataChannelListener) Serve() {
 		if err != nil {
 			break
 		}
-		in, out, _ := d.delegate.GetUserChannel(dc.GetUserId())
-		go dc.Run(in, out)
+		fromUser, toUser, _ := d.delegate.GetUserChannelFromDataChannel(
+			dc.GetUserId())
+		go dc.Run(fromUser, toUser)
 	}
 }
 
@@ -203,7 +205,8 @@ func (d *DataChannel) GetSession() *packet.SessionIV {
 	return d.session
 }
 
-func (d *DataChannel) readLoop(out chan *packet.Packet) {
+// read from datachannel and write to user
+func (d *DataChannel) readLoop(toUser chan<- *packet.Packet) {
 	d.flow.Add(1)
 	defer d.flow.DoneAndClose()
 	buf := bufio.NewReader(d.conn)
@@ -217,13 +220,13 @@ loop:
 		select {
 		case <-d.flow.IsClose():
 			break loop
-		case out <- p:
-			logex.Info(p)
+		case toUser <- p:
 		}
 	}
 }
 
-func (d *DataChannel) writeLoop(in chan *packet.Packet) {
+// read from user and write to datachannel
+func (d *DataChannel) writeLoop(fromUser <-chan *packet.Packet) {
 	d.flow.Add(1)
 	defer d.flow.DoneAndClose()
 loop:
@@ -231,7 +234,7 @@ loop:
 		select {
 		case <-d.flow.IsClose():
 			break loop
-		case msg := <-in:
+		case msg := <-fromUser:
 			_, err := d.conn.Write(msg.Marshal(d.session))
 			if err != nil {
 				logex.Error(err)
@@ -245,9 +248,11 @@ func (d *DataChannel) GetUserId() int {
 	return int(d.session.UserId)
 }
 
-func (d *DataChannel) Run(in, out chan *packet.Packet) {
-	go d.writeLoop(out)
-	go d.readLoop(in)
+func (d *DataChannel) Run(
+	fromUser <-chan *packet.Packet, toUser chan<- *packet.Packet) {
+
+	go d.writeLoop(fromUser)
+	go d.readLoop(toUser)
 }
 
 func (d *DataChannel) Close() {

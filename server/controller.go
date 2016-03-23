@@ -16,11 +16,12 @@ import (
 type Controller struct {
 	flow      *flow.Flow
 	u         *uc.User
-	in        chan *packet.Packet
-	out       chan *packet.Packet
 	staging   map[uint32]*stage
 	toTun     chan []byte
 	writeChan chan *packet.Packet
+
+	toUser   chan<- *packet.Packet
+	fromUser <-chan *packet.Packet
 }
 
 type stage struct {
@@ -29,22 +30,30 @@ type stage struct {
 }
 
 func NewController(f *flow.Flow, u *uc.User, toTun chan []byte) *Controller {
-	in, out := u.GetChannel()
+	fromUser, toUser := u.GetFromController()
 	c := &Controller{
-		u:         u,
-		in:        in,
-		out:       out,
-		toTun:     toTun,
+		u:     u,
+		toTun: toTun,
+
 		writeChan: make(chan *packet.Packet),
+		toUser:    toUser,
+		fromUser:  fromUser,
 	}
 	f.ForkTo(&c.flow, c.Close)
+	go c.readLoop()
+	go c.writeLoop()
 	return c
 }
 
 func (c *Controller) readLoop() {
+	c.flow.Add(1)
+	defer c.flow.DoneAndClose()
+loop:
 	for {
 		select {
-		case p := <-c.out:
+		case <-c.flow.IsClose():
+			break loop
+		case p := <-c.fromUser:
 			if p.Type.IsResp() {
 				if staging := c.staging[p.IV.ReqId]; staging != nil {
 					select {
@@ -69,15 +78,21 @@ func (c *Controller) readLoop() {
 }
 
 func (c *Controller) writeLoop() {
+	c.flow.Add(1)
+	defer c.flow.DoneAndClose()
+
 loop:
 	for {
 		select {
 		case <-c.flow.IsClose():
 			break loop
 		case p := <-c.writeChan:
-			c.in <- p
+			c.toUser <- p
 		}
 	}
+}
+func (c *Controller) WritePacket(p *packet.Packet) {
+	c.writeChan <- p
 }
 
 func (c *Controller) Write(p *packet.Packet) *packet.Packet {
@@ -92,7 +107,7 @@ func (c *Controller) Write(p *packet.Packet) *packet.Packet {
 	var reply *packet.Packet
 loop:
 	for {
-		c.in <- staging.p
+		c.toUser <- staging.p
 		select {
 		case reply = <-staging.reply:
 			break loop
@@ -104,6 +119,10 @@ loop:
 	return reply
 }
 
-func (c *Controller) Close() {
+func (c *Controller) UserRelogin(u *uc.User) {
 
+}
+
+func (c *Controller) Close() {
+	c.flow.Close()
 }

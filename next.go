@@ -21,7 +21,7 @@ type Next struct {
 }
 
 func main() {
-	f := flow.New(0)
+	f := flow.New()
 	fset, err := flagly.Compile(os.Args[0], &Next{})
 	if err != nil {
 		logex.Fatal(err)

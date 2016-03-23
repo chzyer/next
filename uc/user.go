@@ -20,7 +20,7 @@ var (
 
 type Users struct {
 	user []User
-	m    sync.Mutex
+	m    sync.RWMutex
 }
 
 func NewUsers() *Users {
@@ -78,9 +78,8 @@ func (us *Users) AddUser(ui *UserInfo) *User {
 }
 
 func (u *Users) Load(fp string) error {
-	mutex := u.m
-	mutex.Lock()
-	defer mutex.Unlock()
+	u.m.Lock()
+	defer u.m.Unlock()
 
 	fh, err := os.OpenFile(fp, os.O_RDONLY, 0600)
 	if err != nil {
@@ -104,6 +103,18 @@ func (u *Users) Save(fp string) error {
 	return logex.Trace(gob.NewEncoder(fh).Encode(u.user))
 }
 
+func (us *Users) FindByIP(addr ip.IP) *User {
+	us.m.RLock()
+	defer us.m.RUnlock()
+
+	for idx := range us.user {
+		if us.user[idx].Net.Equal(addr) {
+			return &us.user[idx]
+		}
+	}
+	return nil
+}
+
 func (us *Users) FindId(id int) *User {
 	if id >= len(us.user) {
 		return nil
@@ -119,8 +130,8 @@ type User struct {
 	*UserInfo
 	Net   *ip.IP
 	Token string
-	in    chan *packet.Packet
-	out   chan *packet.Packet
+	chan1 chan *packet.Packet
+	chan2 chan *packet.Packet
 }
 
 func NewUser(ui *UserInfo) *User {
@@ -130,14 +141,31 @@ func NewUser(ui *UserInfo) *User {
 	}
 }
 
-func (u *User) GetChannel() (in, out chan *packet.Packet) {
-	if u.in == nil {
-		u.in = make(chan *packet.Packet)
+// controller -> user -> datachannel
+//            <-      <-
+func (u *User) ensureChannel() {
+	if u.chan1 == nil {
+		u.chan1 = make(chan *packet.Packet)
 	}
-	if u.out == nil {
-		u.out = make(chan *packet.Packet)
+	if u.chan2 == nil {
+		u.chan2 = make(chan *packet.Packet)
 	}
-	return u.in, u.out
+}
+
+func (u *User) SendByController(p *packet.Packet) {
+	u.chan2 <- p
+}
+
+func (u *User) GetFromController() (
+	fromUser <-chan *packet.Packet, toUser chan<- *packet.Packet) {
+	u.ensureChannel()
+	return u.chan1, u.chan2
+}
+
+func (u *User) GetFromDataChannel() (
+	fromUser <-chan *packet.Packet, toUser chan<- *packet.Packet) {
+	u.ensureChannel()
+	return u.chan2, u.chan1
 }
 
 func (u User) String() string {

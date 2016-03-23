@@ -68,6 +68,7 @@ loop:
 		case <-d.flow.IsClose():
 			break loop
 		case d.out <- p:
+
 		}
 	}
 }

@@ -15,7 +15,6 @@ type Client struct {
 }
 
 func New(cfg *Config, f *flow.Flow) *Client {
-	*f.Debug = cfg.DebugFlow
 	cli := &Client{
 		cfg:  cfg,
 		flow: f,

@@ -1,51 +1,48 @@
-package client
+package server
 
 import (
 	"github.com/chzyer/flow"
-	"github.com/chzyer/next/ip"
-	"github.com/chzyer/next/uc"
 	"github.com/chzyer/tunnel"
 	"gopkg.in/logex.v1"
 )
 
 type Tun struct {
-	tun  *tunnel.Instance
-	flow *flow.Flow
+	flow    *flow.Flow
+	tun     *tunnel.Instance
+	in, out chan []byte
 }
 
-func newTun(f *flow.Flow, remoteCfg *uc.AuthResponse, cfg *Config) (*Tun, error) {
-	ipnet, err := ip.ParseCIDR(remoteCfg.Gateway)
-	if err != nil {
-		return nil, logex.Trace(err)
-	}
-	ipnet.IP = ip.ParseIP(remoteCfg.INet)
-
+func newTun(f *flow.Flow, cfg *Config) (*Tun, error) {
 	tun, err := tunnel.New(&tunnel.Config{
 		DevId:   cfg.DevId,
-		Gateway: ipnet.IP.IP(),
-		Mask:    ipnet.Mask,
-		MTU:     remoteCfg.MTU,
-		Debug:   cfg.Debug,
+		Gateway: cfg.Net.IP.IP(),
+		Mask:    cfg.Net.Mask,
+		MTU:     cfg.MTU,
+		Debug:   cfg.DebugTun,
 	})
 	if err != nil {
 		return nil, logex.Trace(err)
 	}
 	t := &Tun{
 		tun: tun,
+		in:  make(chan []byte),
+		out: make(chan []byte),
 	}
 	f.ForkTo(&t.flow, t.Close)
-
 	return t, nil
 }
 
-func (t *Tun) Close() {
-	t.tun.Close()
-	t.flow.Close()
+func (t *Tun) WriteChan() chan []byte {
+	return t.in
 }
 
-func (t *Tun) Run(in, out chan []byte) {
-	go t.readLoop(out)
-	go t.writeLoop(in)
+func (t *Tun) ReadChan() chan []byte {
+	return t.out
+}
+
+func (t *Tun) Run() {
+	go t.writeLoop(t.in)
+	go t.readLoop(t.out)
 }
 
 func (t *Tun) writeLoop(in chan []byte) {
@@ -82,4 +79,9 @@ loop:
 			break loop
 		}
 	}
+}
+
+func (t *Tun) Close() {
+	t.tun.Close()
+	t.flow.Close()
 }

@@ -41,6 +41,8 @@ func (c *Config) FlaglyVerify() error {
 	if c.Password == "" {
 		return fmt.Errorf("password is missing")
 	}
+
+	flow.DefaultDebug = c.DebugFlow
 	logex.ShowCode = c.DebugStack
 	return nil
 }
