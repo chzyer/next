@@ -80,7 +80,8 @@ func (s *SysEnv) FlaglyHandle(f *flow.Flow) error {
 	defer f.Close()
 	sh := []string{
 		"sysctl -w net.ipv4.ip_forward=1",
-		fmt.Sprintf("iptables --table nat --append POSTROUTING --out-interface %v --jump MASQUERADE", s.Iface),
+		"iptables --table nat --append POSTROUTING " +
+			"--out-interface " + s.Iface + " --jump MASQUERADE",
 	}
 	for _, s := range sh {
 		println(s)

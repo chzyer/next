@@ -75,14 +75,15 @@ func (s *Server) loadDataChannel() {
 	s.dataChannel.Start(1)
 }
 
-func (s *Server) initAndRunTun() {
+func (s *Server) initAndRunTun() bool {
 	tun, err := newTun(s.flow, s.cfg)
 	if err != nil {
 		s.flow.Error(err)
-		return
+		return false
 	}
 	tun.Run()
 	s.tun = tun
+	return true
 }
 
 func (s *Server) initControllerGroup() {
@@ -91,7 +92,9 @@ func (s *Server) initControllerGroup() {
 }
 
 func (s *Server) Run() {
-	s.initAndRunTun()
+	if !s.initAndRunTun() {
+		return
+	}
 	s.initControllerGroup() // after tun
 	go s.runHttp()
 	go s.runShell()
