@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"io"
 
-	"gopkg.in/logex.v1"
-
 	"github.com/chzyer/flagly"
 	"github.com/chzyer/readline"
 )
@@ -35,9 +33,8 @@ func (c *ShellUserAdd) FlaglyHandle(s *Server, rl *readline.Instance) error {
 	s.uc.Register(c.Name, string(pasw))
 	err = s.uc.Save(s.cfg.DBPath)
 	if err != nil {
-		logex.Error(err)
+		err = fmt.Errorf("save user info failed: %v", err.Error())
 	}
-	// TODO: flagly can't report it
 	return err
 }
 

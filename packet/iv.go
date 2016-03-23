@@ -48,6 +48,10 @@ func NewSessionIV(userId, port uint16, token []byte) *SessionIV {
 	}
 }
 
+func (c *SessionIV) Clone(port uint16) *SessionIV {
+	return NewSessionIV(c.UserId, port, c.Token[:30])
+}
+
 func (c *SessionIV) Encode(iv *IV, dst, src []byte) {
 	crypto.EncodeAes(dst, src, c.Token, iv.Data)
 }

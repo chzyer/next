@@ -19,7 +19,8 @@ func (c *Client) httpReq(ret interface{}, path string, data interface{}) error {
 	if data == nil {
 		resp, err = http.Get(c.cfg.Host + path)
 	} else {
-		jsonBody, err := json.Marshal(data)
+		var jsonBody []byte
+		jsonBody, err = json.Marshal(data)
 		if err != nil {
 			return err
 		}
@@ -29,6 +30,7 @@ func (c *Client) httpReq(ret interface{}, path string, data interface{}) error {
 	if err != nil {
 		return err
 	}
+	logex.Info(resp, err)
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return err
@@ -55,7 +57,23 @@ func (c *Client) initClock() error {
 	return nil
 }
 
-func (c *Client) Login(username string, password string) (*uc.AuthResponse, error) {
+func (c *Client) Login() (*uc.AuthResponse, error) {
+	if err := c.initClock(); err != nil {
+		return nil, logex.Trace(err)
+	}
+
+	ret, err := c.doLogin(c.cfg.UserName, c.cfg.Password)
+	if err != nil {
+		return nil, logex.Trace(err)
+	}
+
+	if err := c.onLogin(ret); err != nil {
+		return nil, logex.Trace(err)
+	}
+	return ret, nil
+}
+
+func (c *Client) doLogin(username string, password string) (*uc.AuthResponse, error) {
 	req := uc.NewAuthRequest(
 		username, c.clock.Unix(), []byte(password), []byte(c.cfg.AesKey))
 	var ret uc.AuthResponse

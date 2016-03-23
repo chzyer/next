@@ -1,4 +1,4 @@
-package server
+package client
 
 import (
 	"fmt"
@@ -6,30 +6,39 @@ import (
 	"net"
 	"os"
 
-	"gopkg.in/logex.v1"
-
 	"github.com/chzyer/flagly"
+	"github.com/chzyer/flow"
 	"github.com/chzyer/readline"
 	"github.com/google/shlex"
+
+	"gopkg.in/logex.v1"
 )
 
 type Shell struct {
-	sock string
-	conn net.Listener
-	svr  *Server
+	flow   *flow.Flow
+	Sock   string
+	ln     net.Listener
+	client *Client
 }
 
-func NewShell(svr *Server, sock string) (*Shell, error) {
+func NewShell(f *flow.Flow, cli *Client, sock string) (*Shell, error) {
 	ln, err := net.Listen("unix", sock)
 	if err != nil {
-		return nil, err
+		return nil, logex.Trace(err)
 	}
 	sh := &Shell{
-		sock: sock,
-		conn: ln,
-		svr:  svr,
+		Sock:   sock,
+		client: cli,
+		ln:     ln,
 	}
+	f.ForkTo(&sh.flow, sh.Close)
 	return sh, nil
+}
+
+func (s *Shell) Close() {
+	s.ln.Close()
+	s.flow.Close()
+	os.Remove(s.Sock)
 }
 
 func (s *Shell) handleConn(conn net.Conn) {
@@ -50,9 +59,9 @@ func (s *Shell) handleConn(conn net.Conn) {
 		logex.Info(err)
 		return
 	}
-	fset.Context(rl, s.svr)
+	fset.Context(rl, s.client)
 
-	io.WriteString(rl, "Next Server CLI\n")
+	io.WriteString(rl, "Next Client CLI\n")
 	for {
 		command, err := rl.Readline()
 		if err != nil {
@@ -72,7 +81,7 @@ func (s *Shell) handleConn(conn net.Conn) {
 
 func (s *Shell) loop() {
 	for {
-		conn, err := s.conn.Accept()
+		conn, err := s.ln.Accept()
 		if err != nil {
 			break
 		}
@@ -80,12 +89,15 @@ func (s *Shell) loop() {
 	}
 }
 
-func (s *Shell) Close() {
-	s.conn.Close()
-	os.Remove(s.sock)
+type ShellCLI struct {
+	Help *flagly.CmdHelp `flaglyHandler`
+	Ping *ShellPing      `flaglyHandler`
 }
 
-type ShellCLI struct {
-	Help flagly.CmdHelp `flaglyHandler`
-	User ShellUser      `flaglyHandler`
+type ShellPing struct {
+}
+
+func (*ShellPing) FlaglyHandle(c *Client) error {
+	logex.Info(c)
+	return nil
 }

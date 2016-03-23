@@ -19,6 +19,8 @@ type Config struct {
 	Password string
 	AesKey   string
 
+	Sock string `desc:"unixsock for interactive with" default:"/tmp/next.sock"`
+
 	Host2 string `host`
 	Host  string `[0]`
 }

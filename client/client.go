@@ -1,10 +1,14 @@
 package client
 
 import (
+	"strconv"
+	"time"
+
 	"github.com/chzyer/flow"
 	"github.com/chzyer/next/packet"
 	"github.com/chzyer/next/uc"
 	"github.com/chzyer/next/util/clock"
+	"gopkg.in/logex.v1"
 )
 
 type Client struct {
@@ -12,12 +16,18 @@ type Client struct {
 	clock *clock.Clock
 	flow  *flow.Flow
 	tun   *Tun
+	shell *Shell
+
+	dcIn  chan *packet.Packet
+	dcOut chan *packet.Packet
 }
 
 func New(cfg *Config, f *flow.Flow) *Client {
 	cli := &Client{
-		cfg:  cfg,
-		flow: f,
+		cfg:   cfg,
+		flow:  f,
+		dcIn:  make(chan *packet.Packet),
+		dcOut: make(chan *packet.Packet),
 	}
 	return cli
 }
@@ -26,21 +36,28 @@ func (c *Client) Close() {
 	c.flow.Close()
 }
 
-func (c *Client) initDataChannel(remoteCfg *uc.AuthResponse) (in, out chan *packet.Packet, err error) {
+func (c *Client) initDataChannel(remoteCfg *uc.AuthResponse) (err error) {
 	port := remoteCfg.GetDataChannelPort()
 	session := packet.NewSessionIV(
 		uint16(remoteCfg.UserId), uint16(port), []byte(remoteCfg.Token))
 
-	in = make(chan *packet.Packet)
-	out = make(chan *packet.Packet)
-	dc, err := NewDataChannel(
-		remoteCfg.DataChannel, c.flow, session, in, out)
-	if err != nil {
-		return nil, nil, err
-	}
-	_ = dc
+	dcs := NewDataChannels(c.flow, []string{remoteCfg.DataChannel}, session,
+		c.dcIn, c.dcOut)
+	dcs.SetOnAllChannelsBackoff(func() {
+		dcs.Close()
+		for {
+			resp, err := c.Login()
+			if err != nil {
+				logex.Error(err)
+				time.Sleep(2 * time.Second)
+				continue
+			}
+			*remoteCfg = *resp
+			break
+		}
+	})
 
-	return in, out, nil
+	return nil
 }
 
 func (c *Client) initTun(remoteCfg *uc.AuthResponse) (in, out chan []byte, err error) {
@@ -54,19 +71,16 @@ func (c *Client) initTun(remoteCfg *uc.AuthResponse) (in, out chan []byte, err e
 	return in, out, nil
 }
 
-func (c *Client) Run() {
-	if err := c.initClock(); err != nil {
-		c.flow.Error(err)
-		return
-	}
-
-	remoteCfg, err := c.Login(c.cfg.UserName, c.cfg.Password)
+func (c *Client) onLogin(a *uc.AuthResponse) error {
+	err := c.initDataChannel(a)
 	if err != nil {
-		c.flow.Error(err)
-		return
+		return logex.Trace(err)
 	}
+	return nil
+}
 
-	dcIn, dcOut, err := c.initDataChannel(remoteCfg)
+func (c *Client) Run() {
+	remoteCfg, err := c.Login()
 	if err != nil {
 		c.flow.Error(err)
 		return
@@ -78,6 +92,11 @@ func (c *Client) Run() {
 		return
 	}
 
+	if err := c.runShell(); err != nil {
+		c.flow.Error(err)
+		return
+	}
+
 	go func() {
 	loop:
 		for {
@@ -85,8 +104,8 @@ func (c *Client) Run() {
 			case <-c.flow.IsClose():
 				break loop
 			case data := <-tunOut:
-				dcIn <- packet.New(data, packet.Data)
-			case pRecv := <-dcOut:
+				c.dcIn <- packet.New(data, packet.Data)
+			case pRecv := <-c.dcOut:
 				if pRecv.Type == packet.Data {
 					tunIn <- pRecv.Data()
 				}
@@ -96,4 +115,15 @@ func (c *Client) Run() {
 
 	println("ok")
 
+}
+
+func (c *Client) runShell() error {
+	shell, err := NewShell(c.flow, c, c.cfg.Sock)
+	if err != nil {
+		return err
+	}
+	c.shell = shell
+	logex.Info("listen debug sock in", strconv.Quote(c.cfg.Sock))
+	go shell.loop()
+	return nil
 }

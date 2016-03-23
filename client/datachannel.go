@@ -12,19 +12,20 @@ import (
 )
 
 type DataChannel struct {
-	s    *packet.SessionIV
-	conn net.Conn
-	flow *flow.Flow
-	in   chan *packet.Packet
-	out  chan *packet.Packet
+	s       *packet.SessionIV
+	conn    net.Conn
+	flow    *flow.Flow
+	in      chan *packet.Packet
+	out     chan *packet.Packet
+	onClose func()
 }
 
 func NewDataChannel(host string, f *flow.Flow, session *packet.SessionIV,
-	in, out chan *packet.Packet) (*DataChannel, error) {
+	onClose func(), in, out chan *packet.Packet) (*DataChannel, error) {
 
 	conn, err := net.Dial("tcp", host)
 	if err != nil {
-		return nil, err
+		return nil, logex.Trace(err)
 	}
 
 	p := packet.New(session.Token, packet.Auth)
@@ -40,10 +41,11 @@ func NewDataChannel(host string, f *flow.Flow, session *packet.SessionIV,
 	}
 
 	dc := &DataChannel{
-		s:    session,
-		conn: conn,
-		in:   in,
-		out:  out,
+		s:       session,
+		conn:    conn,
+		in:      in,
+		out:     out,
+		onClose: onClose,
 	}
 	f.ForkTo(&dc.flow, dc.Close)
 
@@ -95,4 +97,7 @@ loop:
 func (d *DataChannel) Close() {
 	d.conn.Close()
 	d.flow.Close()
+	if d.onClose != nil {
+		d.onClose()
+	}
 }
