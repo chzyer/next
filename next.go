@@ -9,6 +9,7 @@ import (
 	"github.com/chzyer/flow"
 	"github.com/chzyer/next/client"
 	"github.com/chzyer/next/server"
+	"github.com/chzyer/next/util"
 	"github.com/chzyer/readline"
 	"gopkg.in/logex.v1"
 )
@@ -17,6 +18,7 @@ type Next struct {
 	Server *server.Config `flaglyHandler`
 	Client *client.Config `flaglyHandler`
 	GenKey *NextGenKey    `flaglyHandler`
+	SysEnv *SysEnv        `flaglyHandler`
 	Shell  *NextShell     `flaglyHandler`
 }
 
@@ -66,4 +68,29 @@ func (n *NextShell) FlaglyHandle(f *flow.Flow) error {
 
 func (NextShell) FlaglyDesc() string {
 	return "shell mode"
+}
+
+// -----------------------------------------------------------------------------
+
+type SysEnv struct {
+	Iface string `default:"eth0"`
+}
+
+func (s *SysEnv) FlaglyHandle(f *flow.Flow) error {
+	defer f.Close()
+	sh := []string{
+		"sysctl -w net.ipv4.ip_forward=1",
+		fmt.Sprintf("iptables --table nat --append POSTROUTING --out-interface %v --jump MASQUERADE", s.Iface),
+	}
+	for _, s := range sh {
+		println(s)
+		if err := util.Shell(s); err != nil {
+			logex.Error(err)
+		}
+	}
+	return nil
+}
+
+func (s *SysEnv) FlaglyDesc() string {
+	return "enable ipforward and NAT, for linux"
 }
