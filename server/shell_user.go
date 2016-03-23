@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io"
 
+	"gopkg.in/logex.v1"
+
 	"github.com/chzyer/flagly"
 	"github.com/chzyer/readline"
 )
@@ -25,12 +27,18 @@ func (c *ShellUserAdd) FlaglyHandle(s *Server, rl *readline.Instance) error {
 	if u != nil {
 		return flagly.Error(fmt.Sprintf("name '%s' already exists", c.Name))
 	}
+	// TODO: vps can't display "password: "
 	pasw, err := rl.ReadPassword("password: ")
 	if err != nil {
 		return fmt.Errorf("aborted")
 	}
 	s.uc.Register(c.Name, string(pasw))
-	return s.uc.Save(s.cfg.DBPath)
+	err = s.uc.Save(s.cfg.DBPath)
+	if err != nil {
+		logex.Error(err)
+	}
+	// TODO: flagly can't report it
+	return err
 }
 
 type ShellUserShow struct{}

@@ -55,6 +55,16 @@ func newPacket(payload []byte, t Type) (*Packet, error) {
 	return p, nil
 }
 
+func (p *Packet) Data() []byte {
+	if IsHasLoopbackPrefix && p.Type == Data {
+		b := make([]byte, len(p.Payload)+len(loopbackPrefix))
+		copy(b, loopbackPrefix)
+		copy(b[4:], p.Payload)
+		return b
+	}
+	return p.Payload
+}
+
 func (p *Packet) Marshal(s *SessionIV) []byte {
 	// 1. iv [0:16]
 	// 2. crc32(payload+type) [16:20]

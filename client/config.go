@@ -19,18 +19,22 @@ type Config struct {
 	Password string
 	AesKey   string
 
-	RemoteHost string `[0]`
+	Host2 string `host`
+	Host  string `[0]`
 }
 
 func (c *Config) FlaglyVerify() error {
-	if c.RemoteHost == "" {
-		return fmt.Errorf("remoteHost is empty")
+	if c.Host == "" {
+		c.Host = c.Host2
 	}
-	if !strings.Contains(c.RemoteHost, ":") {
-		c.RemoteHost += ":11311"
+	if c.Host == "" {
+		return fmt.Errorf("host is empty")
 	}
-	if !strings.HasPrefix(c.RemoteHost, "http") {
-		c.RemoteHost = "http://" + c.RemoteHost
+	if !strings.Contains(c.Host, ":") {
+		c.Host += ":11311"
+	}
+	if !strings.HasPrefix(c.Host, "http") {
+		c.Host = "http://" + c.Host
 	}
 	if c.AesKey == "" {
 		return fmt.Errorf("aeskey is required")

@@ -17,14 +17,14 @@ func (c *Client) httpReq(ret interface{}, path string, data interface{}) error {
 	var resp *http.Response
 	var err error
 	if data == nil {
-		resp, err = http.Get(c.cfg.RemoteHost + path)
+		resp, err = http.Get(c.cfg.Host + path)
 	} else {
 		jsonBody, err := json.Marshal(data)
 		if err != nil {
 			return err
 		}
 		body := bytes.NewReader(jsonBody)
-		resp, err = http.Post(c.cfg.RemoteHost+path, "application/json", body)
+		resp, err = http.Post(c.cfg.Host+path, "application/json", body)
 	}
 	if err != nil {
 		return err

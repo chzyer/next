@@ -87,7 +87,9 @@ func (c *Client) Run() {
 			case data := <-tunOut:
 				dcIn <- packet.New(data, packet.Data)
 			case pRecv := <-dcOut:
-				tunIn <- pRecv.Payload
+				if pRecv.Type == packet.Data {
+					tunIn <- pRecv.Data()
+				}
 			}
 		}
 	}()

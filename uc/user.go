@@ -83,6 +83,9 @@ func (u *Users) Load(fp string) error {
 
 	fh, err := os.OpenFile(fp, os.O_RDONLY, 0600)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return logex.NewError(fp + " is not exists.")
+		}
 		return logex.Trace(err)
 	}
 	defer fh.Close()
