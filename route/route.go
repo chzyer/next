@@ -1,6 +1,9 @@
 package route
 
 import (
+	"bytes"
+	"fmt"
+	"io/ioutil"
 	"net"
 	"strings"
 	"time"
@@ -91,6 +94,9 @@ func (r *Route) RemoveItem(cidr string) error {
 	if item := r.items.Remove(cidr); item != nil {
 		return r.DeleteRoute(cidr)
 	}
+	if err := r.RemoveEphemeralItem(cidr); err != nil {
+		return err
+	}
 	return ErrRouteItemNotFound.Format(cidr)
 }
 
@@ -139,11 +145,40 @@ func (r *Route) SetRoute(cidr string) error {
 }
 
 func (r *Route) Load(fp string) error {
+	rule, err := ioutil.ReadFile(fp)
+	if err != nil {
+		return logex.Trace(err)
+	}
+	reader := bytes.NewBuffer(rule)
+	for {
+		line, err := reader.ReadBytes('\n')
+		if len(line) > 0 {
+			cmd := strings.TrimSpace(string(line))
+			sp := strings.Split(cmd, "\t")
+			if len(sp) != 2 {
+				continue
+			}
+			cidr, comment := sp[0], sp[1]
+			if _, _, err := net.ParseCIDR(cidr); err != nil {
+				logex.Error("parse", cidr, "error:", err)
+				continue
+			}
+			r.AddItem(NewItem(cidr, comment))
+		}
+		if err != nil {
+			break
+		}
+	}
+
 	return nil
 }
 
 func (r *Route) Save(fp string) error {
-	return nil
+	buf := bytes.NewBuffer(nil)
+	for _, item := range *r.items {
+		fmt.Fprintf(buf, "%v\t%v\n", item.CIDR, item.Comment)
+	}
+	return logex.Trace(ioutil.WriteFile(fp, buf.Bytes(), 0600))
 }
 
 func formatCIDR(cidr string) string {

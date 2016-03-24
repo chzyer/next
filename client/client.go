@@ -86,7 +86,9 @@ func (c *Client) onLogin(a *uc.AuthResponse) error {
 
 func (c *Client) initRoute() {
 	c.route = route.NewRoute(c.flow, c.tun.Name())
-	// c.route.Load(fp)
+	if err := c.route.Load(c.cfg.RouteFile); err != nil {
+		logex.Error(err)
+	}
 }
 
 func (c *Client) Run() {

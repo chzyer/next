@@ -14,10 +14,11 @@ type Config struct {
 	DebugStack bool `default:"true"`
 	DebugFlow  bool
 
-	DevId    int
-	UserName string
-	Password string
-	AesKey   string
+	DevId     int
+	UserName  string
+	Password  string
+	AesKey    string
+	RouteFile string `default:"routes.conf"`
 
 	Sock string `desc:"unixsock for interactive with" default:"/tmp/next.sock"`
 

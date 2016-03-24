@@ -79,20 +79,30 @@ func (arg *ShellRouteAdd) FlaglyHandle(c *Client) (err error) {
 	}
 	if arg.Duration == 0 {
 		err = c.route.AddItem(route.NewItem(arg.CIDR, arg.Comment))
-		if err == nil {
-			err = fmt.Errorf("route item '%v' added", arg.CIDR)
+		if err != nil {
+			return err
 		}
+		err = c.route.Save(c.cfg.RouteFile)
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("route item '%v' added", arg.CIDR)
 	} else {
 		ei := &route.EphemeralItem{
 			Item:    route.NewItem(arg.CIDR, arg.Comment),
 			Expired: time.Now().Add(arg.Duration).Round(time.Second),
 		}
 		err = c.route.AddEphemeralItem(ei)
-		if err == nil {
-			err = fmt.Errorf("ephemeral item '%v' added, expired in: %v",
-				ei.CIDR, ei.Expired,
-			)
+		if err != nil {
+			return err
 		}
+		err = c.route.Save(c.cfg.RouteFile)
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("ephemeral item '%v' added, expired in: %v",
+			ei.CIDR, ei.Expired,
+		)
 	}
 	return err
 }
