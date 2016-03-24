@@ -6,6 +6,7 @@ import (
 
 	"github.com/chzyer/flow"
 	"github.com/chzyer/next/packet"
+	"github.com/chzyer/next/route"
 	"github.com/chzyer/next/uc"
 	"github.com/chzyer/next/util/clock"
 	"gopkg.in/logex.v1"
@@ -17,6 +18,7 @@ type Client struct {
 	flow  *flow.Flow
 	tun   *Tun
 	shell *Shell
+	route *route.Route
 
 	dataChannels *DataChannels
 	dcIn         chan *packet.Packet
@@ -70,6 +72,7 @@ func (c *Client) initTun(remoteCfg *uc.AuthResponse) (in, out chan []byte, err e
 		return nil, nil, err
 	}
 	tun.Run(in, out)
+	c.tun = tun
 	return in, out, nil
 }
 
@@ -79,6 +82,11 @@ func (c *Client) onLogin(a *uc.AuthResponse) error {
 		return logex.Trace(err)
 	}
 	return nil
+}
+
+func (c *Client) initRoute() {
+	c.route = route.NewRoute(c.flow, c.tun.Name())
+	// c.route.Load(fp)
 }
 
 func (c *Client) Run() {
@@ -93,6 +101,8 @@ func (c *Client) Run() {
 		c.flow.Error(err)
 		return
 	}
+
+	c.initRoute()
 
 	if err := c.runShell(); err != nil {
 		c.flow.Error(err)

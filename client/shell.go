@@ -5,6 +5,8 @@ import (
 	"io"
 	"net"
 	"os"
+	"os/user"
+	"path/filepath"
 
 	"github.com/chzyer/flagly"
 	"github.com/chzyer/flow"
@@ -26,6 +28,7 @@ func NewShell(f *flow.Flow, cli *Client, sock string) (*Shell, error) {
 	if err != nil {
 		return nil, logex.Trace(err)
 	}
+	os.Chmod(sock, 0777)
 	sh := &Shell{
 		Sock:   sock,
 		client: cli,
@@ -44,8 +47,16 @@ func (s *Shell) Close() {
 func (s *Shell) handleConn(conn net.Conn) {
 	defer conn.Close()
 
+	homeDir := os.Getenv("HOME")
+	userAcct, _ := user.Current()
+	if userAcct != nil {
+		homeDir = userAcct.HomeDir
+	}
+
+	hf := filepath.Join(homeDir, ".nextcli_history")
 	cfg := readline.Config{
-		Prompt: " -> ",
+		HistoryFile: hf,
+		Prompt:      " -> ",
 	}
 	rl, err := readline.HandleConn(cfg, conn)
 	if err != nil {
@@ -93,6 +104,7 @@ type ShellCLI struct {
 	Help      *flagly.CmdHelp `flaglyHandler`
 	Ping      *ShellPing      `flaglyHandler`
 	HeartBeat *ShellHeartBeat `flaglyHandler`
+	Route     *ShellRoute     `flaglyHandler`
 }
 
 type ShellHeartBeat struct{}
@@ -103,8 +115,7 @@ func (*ShellHeartBeat) FlaglyHandle(c *Client, rl *readline.Instance) error {
 	return nil
 }
 
-type ShellPing struct {
-}
+type ShellPing struct{}
 
 func (*ShellPing) FlaglyHandle(c *Client) error {
 	logex.Info(c)

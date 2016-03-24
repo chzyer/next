@@ -30,7 +30,6 @@ func (c *Client) httpReq(ret interface{}, path string, data interface{}) error {
 	if err != nil {
 		return err
 	}
-	logex.Info(resp, err)
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return err
