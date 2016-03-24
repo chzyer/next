@@ -6,6 +6,7 @@ import (
 
 	"github.com/chzyer/flagly"
 	"github.com/chzyer/next/route"
+	"github.com/chzyer/next/util"
 	"github.com/chzyer/readline"
 )
 
@@ -51,10 +52,18 @@ func (ShellRouteShow) FlaglyHandle(c *Client, rl *readline.Instance) error {
 		if len(eis) > 0 {
 			fmt.Fprintln(rl)
 		}
+		max := 0
+		for _, item := range items {
+			if len(item.CIDR) > max {
+				max = len(item.CIDR)
+			}
+		}
 
 		fmt.Fprintln(rl, "Item:")
 		for _, item := range items {
-			fmt.Fprintf(rl, "\t%v\t\t%v\n", item.CIDR, item.Comment)
+			fmt.Fprintf(rl, "\t%v\t%v\n",
+				util.FillString(item.CIDR, max, " "), item.Comment,
+			)
 		}
 	}
 	return nil

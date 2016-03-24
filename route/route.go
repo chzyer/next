@@ -176,6 +176,7 @@ func (r *Route) Load(fp string) error {
 			break
 		}
 	}
+	r.items.Sort()
 
 	return nil
 }

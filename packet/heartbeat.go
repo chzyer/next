@@ -18,9 +18,9 @@ type HeartBeatStat struct {
 
 func (s HeartBeatStat) String() string {
 	return fmt.Sprintf(
-		"avg: %v, droped: %.2f",
+		"avg: %v, droped: %v/%v",
 		s.total/time.Duration(s.count),
-		float64(s.droped*100/s.count),
+		s.droped, s.count,
 	)
 }
 

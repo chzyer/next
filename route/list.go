@@ -4,6 +4,8 @@ import (
 	"container/list"
 	"sort"
 	"time"
+
+	"github.com/chzyer/next/ip"
 )
 
 type EphemeralItem struct {
@@ -79,7 +81,9 @@ func (is *Items) Len() int {
 }
 
 func (is Items) Less(i, j int) bool {
-	return is[i].CIDR > is[j].CIDR
+	ni, _ := ip.ParseCIDR(is[i].CIDR)
+	nj, _ := ip.ParseCIDR(is[j].CIDR)
+	return ni.IP.Int() < nj.IP.Int()
 }
 
 func (is Items) Swap(i, j int) {
