@@ -79,8 +79,9 @@ func (h *HeartBeatStage) findElem(reqid uint32) *list.Element {
 	return nil
 }
 
-func (h *HeartBeatStage) GetStat() HeartBeatStat {
-	return h.stat
+func (h *HeartBeatStage) GetStat() *HeartBeatStat {
+	s := h.stat
+	return &s
 }
 
 func (h *HeartBeatStage) submitDuration(d time.Duration) {

@@ -18,8 +18,9 @@ type Client struct {
 	tun   *Tun
 	shell *Shell
 
-	dcIn  chan *packet.Packet
-	dcOut chan *packet.Packet
+	dataChannels *DataChannels
+	dcIn         chan *packet.Packet
+	dcOut        chan *packet.Packet
 }
 
 func New(cfg *Config, f *flow.Flow) *Client {
@@ -56,6 +57,7 @@ func (c *Client) initDataChannel(remoteCfg *uc.AuthResponse) (err error) {
 			break
 		}
 	})
+	c.dataChannels = dcs
 
 	return nil
 }

@@ -3,6 +3,7 @@ package client
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"net"
 	"time"
 
@@ -118,6 +119,17 @@ loop:
 			break
 		}
 	}
+}
+
+func (d *DataChannel) GetStat() *packet.HeartBeatStat {
+	return d.heartBeat.GetStat()
+}
+
+func (d *DataChannel) Name() string {
+	return fmt.Sprintf("[%v -> %v]",
+		d.conn.LocalAddr(),
+		d.conn.RemoteAddr(),
+	)
 }
 
 func (d *DataChannel) Close() {

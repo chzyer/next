@@ -90,8 +90,17 @@ func (s *Shell) loop() {
 }
 
 type ShellCLI struct {
-	Help *flagly.CmdHelp `flaglyHandler`
-	Ping *ShellPing      `flaglyHandler`
+	Help      *flagly.CmdHelp `flaglyHandler`
+	Ping      *ShellPing      `flaglyHandler`
+	HeartBeat *ShellHeartBeat `flaglyHandler`
+}
+
+type ShellHeartBeat struct{}
+
+func (*ShellHeartBeat) FlaglyHandle(c *Client, rl *readline.Instance) error {
+	stat := c.dataChannels.GetStats()
+	fmt.Fprintln(rl, stat)
+	return nil
 }
 
 type ShellPing struct {

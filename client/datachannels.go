@@ -1,6 +1,7 @@
 package client
 
 import (
+	"bytes"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -21,6 +22,7 @@ type dcSlot struct {
 	On          bool
 	Port        uint16
 	backoffTime time.Time
+	dc          *DataChannel
 }
 
 func newDcSlot(host string) dcSlot {
@@ -146,13 +148,26 @@ func (d *DataChannels) newDataChannel(idx int) (*DataChannel, error) {
 	}
 	atomic.AddInt32(&d.running, 1)
 	d.slots[idx].On = true
+	d.slots[idx].dc = dc
 	logex.Info("new datachannel to", host)
 	return dc, nil
+}
+
+func (d *DataChannels) GetStats() string {
+	buf := bytes.NewBuffer(nil)
+	for idx := range d.slots {
+		dc := d.slots[idx].dc
+		if dc != nil {
+			buf.WriteString(dc.Name() + ": " + dc.GetStat().String() + "\n")
+		}
+	}
+	return buf.String()
 }
 
 func (d *DataChannels) onDataChannelExits(idx int) func() {
 	return func() {
 		d.slots[idx].On = false
+		d.slots[idx].dc = nil
 		if atomic.AddInt32(&d.running, -1) == 0 {
 			if d.onAllBackoff != nil {
 				d.onAllBackoff()
