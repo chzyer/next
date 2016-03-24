@@ -117,6 +117,10 @@ func (r *Route) PersistEphemeralItem(cidr string) error {
 }
 
 func (r *Route) AddEphemeralItem(i *EphemeralItem) error {
+	if err := checkValidCIDR(i.CIDR); err != nil {
+		return err
+	}
+
 	r.ephemeralItems.Add(i)
 	select {
 	case r.newEphemeralItem <- struct{}{}:
@@ -126,6 +130,9 @@ func (r *Route) AddEphemeralItem(i *EphemeralItem) error {
 }
 
 func (r *Route) AddItem(i *Item) error {
+	if err := checkValidCIDR(i.CIDR); err != nil {
+		return err
+	}
 	i.CIDR = formatCIDR(i.CIDR)
 	if err := r.items.Append(i); err != nil {
 		return err
@@ -192,4 +199,12 @@ func formatCIDR(cidr string) string {
 	}
 
 	return cidr
+}
+
+func checkValidCIDR(cidr string) error {
+	_, _, err := net.ParseCIDR(cidr)
+	if err != nil {
+		err = fmt.Errorf("invalid CIDR: %v", err.Error())
+	}
+	return err
 }
