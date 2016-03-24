@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"net"
+	"time"
 
 	"gopkg.in/logex.v1"
 
@@ -12,12 +13,15 @@ import (
 )
 
 type DataChannel struct {
-	s       *packet.SessionIV
-	conn    net.Conn
-	flow    *flow.Flow
-	in      chan *packet.Packet
-	out     chan *packet.Packet
-	onClose func()
+	s         *packet.SessionIV
+	conn      net.Conn
+	flow      *flow.Flow
+	in        chan *packet.Packet
+	out       chan *packet.Packet
+	writeChan chan *packet.Packet
+	onClose   func()
+
+	heartBeat *packet.HeartBeatStage
 }
 
 func NewDataChannel(host string, f *flow.Flow, session *packet.SessionIV,
@@ -41,13 +45,15 @@ func NewDataChannel(host string, f *flow.Flow, session *packet.SessionIV,
 	}
 
 	dc := &DataChannel{
-		s:       session,
-		conn:    conn,
-		in:      in,
-		out:     out,
-		onClose: onClose,
+		s:         session,
+		conn:      conn,
+		in:        in,
+		out:       out,
+		onClose:   onClose,
+		writeChan: make(chan *packet.Packet, 4),
 	}
 	f.ForkTo(&dc.flow, dc.Close)
+	dc.heartBeat = packet.NewHeartBeatStage(dc.flow, 3*time.Second)
 
 	go dc.readLoop()
 	go dc.writeLoop()
@@ -66,30 +72,50 @@ loop:
 		if err != nil {
 			break
 		}
-		select {
-		case <-d.flow.IsClose():
-			break loop
-		case d.out <- p:
-
+		switch p.Type {
+		case packet.HeartBeat:
+			d.writeChan <- p.Reply(nil)
+		case packet.HeartBeatResp:
+			d.heartBeat.Receive(p.IV)
+		default:
+			select {
+			case <-d.flow.IsClose():
+				break loop
+			case d.out <- p:
+			}
 		}
 	}
+}
+
+func (d *DataChannel) write(p *packet.Packet) error {
+	_, err := d.conn.Write(p.Marshal(d.s))
+	return err
 }
 
 func (d *DataChannel) writeLoop() {
 	d.flow.Add(1)
 	defer d.flow.DoneAndClose()
+	heartBeatTicker := time.NewTicker(time.Second)
+	defer heartBeatTicker.Stop()
 
+	var err error
 loop:
 	for {
 		select {
 		case <-d.flow.IsClose():
 			break loop
+		case <-heartBeatTicker.C:
+			p := d.heartBeat.New()
+			err = d.write(p)
+			d.heartBeat.Add(p.IV)
+		case p := <-d.writeChan:
+			err = d.write(p)
 		case p := <-d.in:
-			_, err := d.conn.Write(p.Marshal(d.s))
-			if err != nil {
-				logex.Error(err)
-				break loop
-			}
+			err = d.write(p)
+		}
+		if err != nil {
+			logex.Error(err)
+			break
 		}
 	}
 }

@@ -25,7 +25,7 @@ var (
 )
 
 type Packet struct {
-	IV      *IV
+	IV      *IV // can nil
 	Type    Type
 	Payload []byte
 }
@@ -36,6 +36,17 @@ func New(payload []byte, t Type) *Packet {
 		panic(err)
 	}
 	return p
+}
+
+func (p *Packet) Reply(payload []byte) *Packet {
+	if !p.Type.IsReq() {
+		return nil
+	}
+	return &Packet{
+		IV:      p.IV,
+		Type:    Type(p.Type + 1),
+		Payload: payload,
+	}
 }
 
 func newPacket(payload []byte, t Type) (*Packet, error) {
