@@ -83,3 +83,7 @@ loop:
 		}
 	}
 }
+
+func (t *Tun) Name() string {
+	return t.tun.Name
+}
