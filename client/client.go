@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/chzyer/flow"
+	"github.com/chzyer/next/datachannel"
 	"github.com/chzyer/next/packet"
 	"github.com/chzyer/next/route"
 	"github.com/chzyer/next/uc"
@@ -20,9 +21,9 @@ type Client struct {
 	shell *Shell
 	route *route.Route
 
-	dataChannels *DataChannels
-	dcIn         chan *packet.Packet
-	dcOut        chan *packet.Packet
+	dcs   *datachannel.Client
+	dcIn  chan *packet.Packet
+	dcOut chan *packet.Packet
 }
 
 func New(cfg *Config, f *flow.Flow) *Client {
@@ -44,8 +45,9 @@ func (c *Client) initDataChannel(remoteCfg *uc.AuthResponse) (err error) {
 	session := packet.NewSessionIV(
 		uint16(remoteCfg.UserId), uint16(port), []byte(remoteCfg.Token))
 
-	dcs := NewDataChannels(c.flow, []string{remoteCfg.DataChannel}, session,
-		c.dcIn, c.dcOut)
+	dcs := datachannel.NewClient(c.flow,
+		[]string{remoteCfg.DataChannel}, session, c.dcIn, c.dcOut)
+
 	dcs.SetOnAllChannelsBackoff(func() {
 		dcs.Close()
 		for {
@@ -59,7 +61,7 @@ func (c *Client) initDataChannel(remoteCfg *uc.AuthResponse) (err error) {
 			break
 		}
 	})
-	c.dataChannels = dcs
+	c.dcs = dcs
 
 	return nil
 }

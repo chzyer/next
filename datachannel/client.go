@@ -1,4 +1,4 @@
-package client
+package datachannel
 
 import (
 	"bytes"
@@ -22,7 +22,7 @@ type dcSlot struct {
 	On          bool
 	Port        uint16
 	backoffTime time.Time
-	dc          *DataChannel
+	dc          *DC
 }
 
 func newDcSlot(host string) dcSlot {
@@ -37,7 +37,7 @@ func newDcSlot(host string) dcSlot {
 	}
 }
 
-type DataChannels struct {
+type Client struct {
 	slots       []dcSlot
 	remoteAddrs []string
 	flow        *flow.Flow
@@ -51,10 +51,10 @@ type DataChannels struct {
 	kickFire     chan struct{}
 }
 
-func NewDataChannels(f *flow.Flow, remoteAddrs []string, s *packet.SessionIV,
-	dcIn, dcOut chan *packet.Packet) *DataChannels {
+func NewClient(f *flow.Flow, remoteAddrs []string, s *packet.SessionIV,
+	dcIn, dcOut chan *packet.Packet) *Client {
 
-	dc := &DataChannels{
+	dc := &Client{
 		session:     s,
 		remoteAddrs: remoteAddrs,
 
@@ -69,15 +69,15 @@ func NewDataChannels(f *flow.Flow, remoteAddrs []string, s *packet.SessionIV,
 	return dc
 }
 
-func (d *DataChannels) Close() {
+func (d *Client) Close() {
 	d.flow.Close()
 }
 
-func (d *DataChannels) SetOnAllChannelsBackoff(f func()) {
+func (d *Client) SetOnAllChannelsBackoff(f func()) {
 	d.onAllBackoff = f
 }
 
-func (d *DataChannels) loop() {
+func (d *Client) loop() {
 	for {
 		slotIdx, wait := d.findOff()
 		if slotIdx < 0 {
@@ -89,7 +89,7 @@ func (d *DataChannels) loop() {
 			}
 			continue
 		}
-		_, err := d.newDataChannel(slotIdx)
+		_, err := d.newDC(slotIdx)
 		if err != nil {
 			logex.Error(err)
 			continue
@@ -97,7 +97,7 @@ func (d *DataChannels) loop() {
 	}
 }
 
-func (d *DataChannels) findOff() (int, time.Duration) {
+func (d *Client) findOff() (int, time.Duration) {
 	now := time.Now()
 	var wait time.Duration
 	for idx := range d.slots {
@@ -120,7 +120,7 @@ func (d *DataChannels) findOff() (int, time.Duration) {
 	return -1, wait
 }
 
-func (d *DataChannels) makeSlots(remoteAddrs []string, size int) []dcSlot {
+func (d *Client) makeSlots(remoteAddrs []string, size int) []dcSlot {
 	slots := make([]dcSlot, 0, len(remoteAddrs)*size)
 	for i := 0; i < size; i++ {
 		for _, addr := range remoteAddrs {
@@ -130,17 +130,17 @@ func (d *DataChannels) makeSlots(remoteAddrs []string, size int) []dcSlot {
 	return slots
 }
 
-func (d *DataChannels) UpdateRemoteAddrs(remoteAddrs []string) {
+func (d *Client) UpdateRemoteAddrs(remoteAddrs []string) {
 	select {
 	case d.kickFire <- struct{}{}:
 	default:
 	}
 }
 
-func (d *DataChannels) newDataChannel(idx int) (*DataChannel, error) {
+func (d *Client) newDC(idx int) (*DC, error) {
 	host := d.slots[idx].Addr
 	port := d.slots[idx].Port
-	dc, err := NewDataChannel(host, d.flow, d.session.Clone(port),
+	dc, err := DialDC(host, d.flow, d.session.Clone(port),
 		d.onDataChannelExits(idx), d.in, d.out)
 	if err != nil {
 		d.slots[idx].backoffTime = time.Now().Add(10 * time.Second)
@@ -153,7 +153,7 @@ func (d *DataChannels) newDataChannel(idx int) (*DataChannel, error) {
 	return dc, nil
 }
 
-func (d *DataChannels) GetStats() string {
+func (d *Client) GetStats() string {
 	buf := bytes.NewBuffer(nil)
 	for idx := range d.slots {
 		dc := d.slots[idx].dc
@@ -164,7 +164,7 @@ func (d *DataChannels) GetStats() string {
 	return buf.String()
 }
 
-func (d *DataChannels) onDataChannelExits(idx int) func() {
+func (d *Client) onDataChannelExits(idx int) func() {
 	return func() {
 		d.slots[idx].On = false
 		d.slots[idx].dc = nil

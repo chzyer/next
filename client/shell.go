@@ -117,7 +117,7 @@ type ShellCLI struct {
 type ShellHeartBeat struct{}
 
 func (*ShellHeartBeat) FlaglyHandle(c *Client, rl *readline.Instance) error {
-	stat := c.dataChannels.GetStats()
+	stat := c.dcs.GetStats()
 	fmt.Fprintln(rl, stat)
 	return nil
 }

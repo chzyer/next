@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/chzyer/flow"
+	"github.com/chzyer/next/datachannel"
 	"github.com/chzyer/next/ip"
 	"github.com/chzyer/next/packet"
 	"github.com/chzyer/next/uc"
@@ -22,7 +23,7 @@ type Server struct {
 	tun   *Tun
 
 	controllerGroup *ControllerGroup
-	dataChannel     *MultiDataChannel
+	dcs             *datachannel.Server
 }
 
 func New(cfg *Config, f *flow.Flow) *Server {
@@ -71,8 +72,8 @@ func (s *Server) runHttp() {
 }
 
 func (s *Server) loadDataChannel() {
-	s.dataChannel = NewMultiDataChannel(s.flow, s)
-	s.dataChannel.Start(1)
+	s.dcs = datachannel.NewServer(s.flow, s)
+	s.dcs.Start(1)
 }
 
 func (s *Server) initAndRunTun() bool {
@@ -156,5 +157,5 @@ func (s *Server) GetMTU() int {
 }
 
 func (s *Server) GetDataChannel(host string) string {
-	return fmt.Sprintf("%s:%v", host, s.dataChannel.GetDataChannel())
+	return fmt.Sprintf("%s:%v", host, s.dcs.GetDataChannel())
 }
