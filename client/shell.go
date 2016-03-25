@@ -81,7 +81,7 @@ func (s *Shell) handleConn(conn net.Conn) {
 			} else {
 				continue
 			}
-		} else {
+		} else if err != nil {
 			break
 		}
 
