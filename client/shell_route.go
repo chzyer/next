@@ -30,6 +30,9 @@ func (arg *ShellRouteRemove) FlaglyHandle(c *Client) error {
 	if err != nil {
 		return err
 	}
+	if err := c.route.Save(c.cfg.RouteFile); err != nil {
+		return err
+	}
 	return fmt.Errorf("item '%v' removed", arg.CIDR)
 }
 
