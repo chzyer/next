@@ -162,15 +162,17 @@ func (r *Route) Load(fp string) error {
 		if len(line) > 0 {
 			cmd := strings.TrimSpace(string(line))
 			sp := strings.Split(cmd, "\t")
-			if len(sp) != 2 {
-				continue
+			cidr, comment := sp[0], ""
+			if len(sp) >= 2 {
+				comment = sp[1]
 			}
-			cidr, comment := sp[0], sp[1]
 			if _, _, err := net.ParseCIDR(cidr); err != nil {
 				logex.Error("parse", cidr, "error:", err)
 				continue
 			}
-			r.AddItem(NewItem(cidr, comment))
+			if err := r.AddItem(NewItem(cidr, comment)); err != nil {
+				logex.Error("add item", cidr, "fail:", err.Error())
+			}
 		}
 		if err != nil {
 			break
@@ -186,7 +188,7 @@ func (r *Route) Save(fp string) error {
 	for _, item := range *r.items {
 		fmt.Fprintf(buf, "%v\t%v\n", item.CIDR, item.Comment)
 	}
-	return logex.Trace(ioutil.WriteFile(fp, buf.Bytes(), 0600))
+	return logex.Trace(ioutil.WriteFile(fp, buf.Bytes(), 0644))
 }
 
 func formatCIDR(cidr string) string {
