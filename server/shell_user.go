@@ -9,12 +9,12 @@ import (
 )
 
 type ShellUser struct {
-	Show *ShellUserShow `flaglyHandler`
-	Add  *ShellUserAdd  `flaglyHandler`
+	Show *ShellUserShow `flagly:"handler"`
+	Add  *ShellUserAdd  `flagly:"handler"`
 }
 
 type ShellUserAdd struct {
-	Name string `[0]`
+	Name string `name:"[0]"`
 }
 
 func (c *ShellUserAdd) FlaglyHandle(s *Server, rl *readline.Instance) error {

@@ -11,15 +11,15 @@ import (
 )
 
 type ShellRoute struct {
-	Add    *ShellRouteAdd    `flaglyHandler`
-	Show   *ShellRouteShow   `flaglyHandler`
-	Remove *ShellRouteRemove `flaglyHandler`
+	Add    *ShellRouteAdd    `flagly:"handler"`
+	Show   *ShellRouteShow   `flagly:"handler"`
+	Remove *ShellRouteRemove `flagly:"handler"`
 }
 
 // -----------------------------------------------------------------------------
 
 type ShellRouteRemove struct {
-	CIDR string "[0]"
+	CIDR string `name:"[0]"`
 }
 
 func (arg *ShellRouteRemove) FlaglyHandle(c *Client) error {
@@ -75,11 +75,11 @@ func (ShellRouteShow) FlaglyHandle(c *Client, rl *readline.Instance) error {
 // -----------------------------------------------------------------------------
 
 type ShellRouteAdd struct {
-	Duration time.Duration `d desc:"ephemeral node duration time"`
+	Duration time.Duration `name:"d" desc:"ephemeral node duration time"`
 
-	Force   bool   `f desc:"force execute even comment is missing"`
-	CIDR    string `[0]`
-	Comment string `[1]`
+	Force   bool   `name:"f" desc:"force execute even comment is missing"`
+	CIDR    string `name:"[0]"`
+	Comment string `name:"[1]"`
 }
 
 func (arg *ShellRouteAdd) FlaglyHandle(c *Client) (err error) {
@@ -116,5 +116,4 @@ func (arg *ShellRouteAdd) FlaglyHandle(c *Client) (err error) {
 			ei.CIDR, ei.Expired,
 		)
 	}
-	return err
 }

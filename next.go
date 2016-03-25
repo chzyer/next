@@ -15,11 +15,11 @@ import (
 )
 
 type Next struct {
-	Server *server.Config `flaglyHandler`
-	Client *client.Config `flaglyHandler`
-	GenKey *NextGenKey    `flaglyHandler`
-	SysEnv *SysEnv        `flaglyHandler`
-	Shell  *NextShell     `flaglyHandler`
+	Server *server.Config `flagly:"handler"`
+	Client *client.Config `flagly:"handler"`
+	GenKey *NextGenKey    `flagly:"handler"`
+	SysEnv *SysEnv        `flagly:"handler"`
+	Shell  *NextShell     `flagly:"handler"`
 }
 
 func main() {

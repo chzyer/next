@@ -86,6 +86,6 @@ func (s *Shell) Close() {
 }
 
 type ShellCLI struct {
-	Help flagly.CmdHelp `flaglyHandler`
-	User ShellUser      `flaglyHandler`
+	Help flagly.CmdHelp `flagly:"handler"`
+	User ShellUser      `flagly:"handler"`
 }

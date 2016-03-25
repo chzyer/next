@@ -22,8 +22,8 @@ type Config struct {
 
 	Sock string `desc:"unixsock for interactive with" default:"/tmp/next.sock"`
 
-	Host2 string `host`
-	Host  string `[0]`
+	Host2 string `name:"host"`
+	Host  string `name:"[0]"`
 }
 
 func (c *Config) FlaglyVerify() error {

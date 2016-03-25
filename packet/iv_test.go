@@ -7,6 +7,6 @@ func TestIV(t *testing.T) {
 	ivb := s.GenIV()
 	iv := ParseIV(ivb)
 	if s.Port != iv.Port || s.UserId != iv.UserId || iv.ReqId != GetReqId() {
-		t.Fatal()
+		t.Fatal("error")
 	}
 }

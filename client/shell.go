@@ -101,10 +101,10 @@ func (s *Shell) loop() {
 }
 
 type ShellCLI struct {
-	Help      *flagly.CmdHelp `flaglyHandler`
-	Ping      *ShellPing      `flaglyHandler`
-	HeartBeat *ShellHeartBeat `flaglyHandler`
-	Route     *ShellRoute     `flaglyHandler`
+	Help      *flagly.CmdHelp `flagly:"handler"`
+	Ping      *ShellPing      `flagly:"handler"`
+	HeartBeat *ShellHeartBeat `flagly:"handler"`
+	Route     *ShellRoute     `flagly:"handler"`
 }
 
 type ShellHeartBeat struct{}
