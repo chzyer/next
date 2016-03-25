@@ -55,9 +55,16 @@ func (s *Shell) handleConn(conn net.Conn) {
 	io.WriteString(rl, "Next Server CLI\n")
 	for {
 		command, err := rl.Readline()
-		if err != nil {
+		if err == readline.ErrInterrupt {
+			if len(command) == 0 {
+				break
+			} else {
+				continue
+			}
+		} else {
 			break
 		}
+
 		args, err := shlex.Split(command)
 		if err != nil {
 			continue
