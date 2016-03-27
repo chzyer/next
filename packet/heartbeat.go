@@ -17,6 +17,9 @@ type HeartBeatStat struct {
 }
 
 func (s HeartBeatStat) String() string {
+	if s.count == 0 {
+		return "not yet"
+	}
 	return fmt.Sprintf(
 		"avg: %v, droped: %v/%v",
 		s.total/time.Duration(s.count),

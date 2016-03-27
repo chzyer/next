@@ -58,7 +58,7 @@ loop:
 		}
 		switch p.Type {
 		case packet.HeartBeat:
-			d.writeChan <- p.Reply(nil)
+			d.writeChan <- p.Reply(heart)
 		case packet.HeartBeatResp:
 			d.heartBeat.Receive(p.IV)
 		default:
@@ -70,6 +70,10 @@ loop:
 		}
 	}
 }
+
+var heart = []byte(nil)
+
+//[]byte{69, 0, 0, 84, 225, 75, 0, 0, 64, 1, 133, 69, 10, 11, 0, 2, 10, 11, 0, 1, 8, 0, 231, 85, 152, 3, 0, 6, 86, 247, 81, 4, 0, 0, 229, 161, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55}
 
 func (d *DC) write(p *packet.Packet) error {
 	_, err := d.conn.Write(p.Marshal(d.session))
@@ -90,6 +94,7 @@ loop:
 			break loop
 		case <-heartBeatTicker.C:
 			p := d.heartBeat.New()
+			p.Payload = heart
 			err = d.write(p)
 			d.heartBeat.Add(p.IV)
 		case p := <-d.writeChan:
