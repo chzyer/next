@@ -26,11 +26,14 @@ func ClientCheckAuth(conn net.Conn, session *packet.SessionIV) error {
 	if _, err := conn.Write(p.Marshal(session)); err != nil {
 		return logex.Trace(err)
 	}
+
 	conn.SetReadDeadline(time.Now().Add(2 * time.Second))
 	pr, err := packet.Read(session, conn)
 	if err != nil {
 		return logex.Trace(err)
 	}
+	conn.SetReadDeadline(time.Time{})
+
 	if !bytes.Equal(pr.Payload, p.Payload) {
 		return logex.NewError("invalid auth reply", pr.Payload, p.Payload)
 	}
