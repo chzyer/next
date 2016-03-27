@@ -3,6 +3,7 @@ package datachannel
 import (
 	"bytes"
 	"net"
+	"time"
 
 	"github.com/chzyer/next/packet"
 	"gopkg.in/logex.v1"
@@ -19,11 +20,13 @@ type SvrDelegate interface {
 		fromUser <-chan *packet.Packet, toUser chan<- *packet.Packet, err error)
 }
 
+// try resend or timeout
 func ClientCheckAuth(conn net.Conn, session *packet.SessionIV) error {
 	p := packet.New(session.Token, packet.Auth)
 	if _, err := conn.Write(p.Marshal(session)); err != nil {
 		return logex.Trace(err)
 	}
+	conn.SetReadDeadline(time.Now().Add(2 * time.Second))
 	pr, err := packet.Read(session, conn)
 	if err != nil {
 		return logex.Trace(err)

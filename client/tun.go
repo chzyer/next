@@ -38,6 +38,11 @@ func newTun(f *flow.Flow, remoteCfg *uc.AuthResponse, cfg *Config) (*Tun, error)
 	return t, nil
 }
 
+// non-test
+func (t *Tun) ConfigUpdate(remoteCfg *uc.AuthResponse) {
+
+}
+
 func (t *Tun) Close() {
 	t.tun.Close()
 	t.flow.Close()

@@ -69,6 +69,7 @@ func (c *Client) Login() (*uc.AuthResponse, error) {
 	if err := c.onLogin(ret); err != nil {
 		return nil, logex.Trace(err)
 	}
+
 	return ret, nil
 }
 

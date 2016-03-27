@@ -91,7 +91,7 @@ func (d *Client) loop() {
 		}
 		_, err := d.newDC(slotIdx)
 		if err != nil {
-			logex.Error(err)
+			logex.Error(err, d.running)
 			continue
 		}
 	}

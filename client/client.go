@@ -83,6 +83,9 @@ func (c *Client) onLogin(a *uc.AuthResponse) error {
 	if err != nil {
 		return logex.Trace(err)
 	}
+	if c.tun != nil {
+		c.tun.ConfigUpdate(a)
+	}
 	return nil
 }
 

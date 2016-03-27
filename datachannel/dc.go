@@ -35,7 +35,11 @@ func New(f *flow.Flow, conn net.Conn, session *packet.SessionIV, cfg *Config) *D
 	}
 
 	f.ForkTo(&dc.flow, dc.Close)
-	dc.heartBeat = packet.NewHeartBeatStage(dc.flow, 3*time.Second)
+	dc.heartBeat = packet.NewHeartBeatStage(
+		dc.flow, 3*time.Second, dc.Name(), func(err error) {
+			logex.Error(dc.Name(), "closed by:", err)
+			dc.Close()
+		})
 	return dc
 }
 
@@ -140,7 +144,7 @@ func (d *DC) GetSession() *packet.SessionIV {
 func DialDC(host string, f *flow.Flow, session *packet.SessionIV,
 	onClose func(), in, out chan *packet.Packet) (*DC, error) {
 
-	conn, err := net.Dial("tcp", host)
+	conn, err := net.DialTimeout("tcp", host, time.Second)
 	if err != nil {
 		return nil, logex.Trace(err)
 	}
