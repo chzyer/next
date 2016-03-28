@@ -41,10 +41,12 @@ func ClientCheckAuth(conn net.Conn, session *packet.SessionIV) error {
 }
 
 func ServerCheckAuth(delegate SvrDelegate, port int, conn net.Conn) (*packet.SessionIV, error) {
+	conn.SetReadDeadline(time.Now().Add(5 * time.Second))
 	iv, err := packet.ReadIV(conn)
 	if err != nil {
 		return nil, logex.Trace(err)
 	}
+	conn.SetReadDeadline(time.Time{})
 	if int(iv.Port) != port {
 		return nil, packet.ErrPortNotMatch.Trace()
 	}

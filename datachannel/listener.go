@@ -10,14 +10,17 @@ import (
 	"gopkg.in/logex.v1"
 )
 
+// add self monitor
 type Listener struct {
 	ln       net.Listener
 	flow     *flow.Flow
 	delegate SvrDelegate
 	port     int
+	closed   bool
+	onClose  func()
 }
 
-func NewListener(f *flow.Flow, d SvrDelegate) (*Listener, error) {
+func NewListener(f *flow.Flow, d SvrDelegate, c func()) (*Listener, error) {
 	ln, err := net.Listen("tcp", ":0")
 	if err != nil {
 		return nil, err
@@ -34,6 +37,7 @@ func NewListener(f *flow.Flow, d SvrDelegate) (*Listener, error) {
 		ln:       ln,
 		port:     port,
 		delegate: d,
+		onClose:  c,
 	}
 	f.ForkTo(&dcln.flow, dcln.Close)
 	return dcln, nil
@@ -77,8 +81,13 @@ func (d *Listener) Serve() {
 }
 
 func (d *Listener) Close() {
+	if d.closed {
+		return
+	}
+	d.closed = true
 	d.ln.Close()
 	d.flow.Close()
+	d.onClose()
 }
 
 func (d *Listener) checkAuth(conn net.Conn) (*packet.SessionIV, error) {

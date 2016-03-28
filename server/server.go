@@ -73,7 +73,7 @@ func (s *Server) runHttp() {
 
 func (s *Server) loadDataChannel() {
 	s.dcs = datachannel.NewServer(s.flow, s)
-	s.dcs.Start(1)
+	s.dcs.Start(4)
 }
 
 func (s *Server) initAndRunTun() bool {

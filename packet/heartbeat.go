@@ -118,7 +118,7 @@ func (s HeartBeatStat) String() string {
 	min15 := s.getMin(15)
 	return fmt.Sprintf("avg: %v %v %v, drop: %v %v %v",
 		min15.rtt(), min5.rtt(), min1.rtt(),
-		min15.dropStr(), min5.dropStr(), min15.dropStr(),
+		min15.dropStr(), min5.dropStr(), min1.dropStr(),
 	)
 }
 
