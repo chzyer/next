@@ -2,7 +2,6 @@ package client
 
 import (
 	"fmt"
-	"io"
 	"net"
 	"os"
 	"os/user"
@@ -72,7 +71,9 @@ func (s *Shell) handleConn(conn net.Conn) {
 	}
 	fset.Context(rl, s.client)
 
-	io.WriteString(rl, "Next Client CLI\n")
+	if readline.IsTerminal(0) {
+		fmt.Fprintln(rl, "Next Client CLI")
+	}
 	for {
 		command, err := rl.Readline()
 		if err == readline.ErrInterrupt {
