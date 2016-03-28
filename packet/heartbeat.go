@@ -40,13 +40,13 @@ func (s *HeartBeatStatInfo) Add(s2 *HeartBeatStatInfo) {
 type HeartBeatStat struct {
 	start    time.Time
 	lastTime int
-	slots    [30]HeartBeatStatInfo // 15 mintue, 30s one second
+	slots    [90]HeartBeatStatInfo // 15 mintue, 10s one item
 	size     int
 }
 
 func (s *HeartBeatStat) getMin(n int) *HeartBeatStatInfo {
 	h := &HeartBeatStatInfo{}
-	n *= 2
+	n *= 6
 	if n > s.size {
 		n = s.size
 	}
@@ -58,10 +58,7 @@ func (s *HeartBeatStat) getMin(n int) *HeartBeatStatInfo {
 
 func (s *HeartBeatStat) getSlot() *HeartBeatStatInfo {
 	now := time.Now()
-	ts := now.Minute() * 2
-	if now.Second() > 30 {
-		ts += 1
-	}
+	ts := (now.Minute() * 6) + (now.Second() / 10)
 
 	if ts != s.lastTime {
 		s.lastTime = ts
