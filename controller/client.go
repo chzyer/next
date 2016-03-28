@@ -35,6 +35,7 @@ loop:
 					break loop
 				}
 			}
+			c.Send(pRecv.Reply(nil))
 		case <-c.flow.IsClose():
 			break loop
 		}

@@ -40,7 +40,7 @@ func New(payload []byte, t Type) *Packet {
 
 func (p *Packet) Reply(payload []byte) *Packet {
 	if !p.Type.IsReq() {
-		return nil
+		panic("resp can't reply")
 	}
 	return &Packet{
 		IV:      p.IV,

@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"sync"
 	"sync/atomic"
 
 	"github.com/chzyer/flow"
@@ -15,7 +16,8 @@ type Controller struct {
 	fromDC <-chan *packet.Packet
 	reqId  uint32
 
-	staging map[uint32]*Request
+	staging      map[uint32]*Request
+	stagingGruad sync.Mutex
 }
 
 func NewController(f *flow.Flow, toDC chan<- *packet.Packet, fromDC <-chan *packet.Packet) *Controller {
@@ -63,9 +65,16 @@ func NewRequest(p *packet.Packet, reply bool) *Request {
 }
 
 func (c *Controller) send(req *Request) *packet.Packet {
-	c.in <- req
-	if req.Reply != nil {
-		return <-req.Reply
+	select {
+	case c.in <- req:
+		if req.Reply != nil {
+			select {
+			case rep := <-req.Reply:
+				return rep
+			case <-c.flow.IsClose():
+			}
+		}
+	case <-c.flow.IsClose():
 	}
 	return nil
 }
@@ -90,7 +99,10 @@ loop:
 		case <-c.flow.IsClose():
 			break loop
 		case p := <-c.fromDC:
+
 			if p.Type.IsResp() {
+
+				c.stagingGruad.Lock()
 				if staging := c.staging[p.IV.ReqId]; staging != nil {
 					if staging.Reply != nil {
 						select {
@@ -98,7 +110,9 @@ loop:
 						default:
 						}
 					}
+					delete(c.staging, p.IV.ReqId)
 				}
+				c.stagingGruad.Unlock()
 			} else {
 				select {
 				case c.out <- p:
@@ -111,7 +125,6 @@ loop:
 }
 
 func (c *Controller) resendLoop() {
-
 }
 
 func (c *Controller) writeLoop() {
@@ -125,9 +138,13 @@ loop:
 			break loop
 		case req := <-c.in:
 			// add to staging
+			c.stagingGruad.Lock()
 			req.Packet.InitIV(c.GetReqId())
-			c.staging[req.Packet.IV.ReqId] = req
+			if req.Packet.Type.IsReq() {
+				c.staging[req.Packet.IV.ReqId] = req
+			}
 			c.toDC <- req.Packet
+			c.stagingGruad.Unlock()
 		}
 	}
 }
