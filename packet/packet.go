@@ -76,9 +76,19 @@ func (p *Packet) Data() []byte {
 	return p.Payload
 }
 
-func (p *Packet) InitIV(reqId uint32) *IV {
-	p.IV = LazyIV(reqId)
+type ReqIder interface {
+	GetReqId() uint32
+}
+
+func (p *Packet) InitIV(reqId ReqIder) *IV {
+	if p.IV == nil {
+		p.initIV(reqId.GetReqId())
+	}
 	return p.IV
+}
+
+func (p *Packet) initIV(reqId uint32) {
+	p.IV = LazyIV(reqId)
 }
 
 func (p *Packet) Marshal(s *SessionIV) []byte {
@@ -89,8 +99,8 @@ func (p *Packet) Marshal(s *SessionIV) []byte {
 	// 5. aes(payload+type, token, iv) [26:]
 	if p.IV == nil {
 		switch p.Type {
-		case AUTH, HEARTBEAT:
-			p.InitIV(0)
+		case AUTH, AUTH_R, HEARTBEAT, HEARTBEAT_R:
+			p.initIV(0)
 		default:
 			panic("iv is null, " + p.Type.String())
 		}

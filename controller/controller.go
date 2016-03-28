@@ -144,7 +144,7 @@ loop:
 			// add to staging
 			c.stagingGruad.Lock()
 			if req.Packet.Type.IsReq() {
-				req.Packet.InitIV(c.GetReqId())
+				req.Packet.InitIV(c)
 				c.staging[req.Packet.IV.ReqId] = req
 				// println("I add to stage: ",
 				//	req.Packet.IV.ReqId, req.Packet.Type.String())
