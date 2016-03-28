@@ -7,7 +7,7 @@ type DataPacket struct {
 }
 
 func NewDataPacket(payload []byte) *DataPacket {
-	return &DataPacket{New(payload, Data)}
+	return &DataPacket{New(payload, DATA)}
 }
 
 func (d *DataPacket) SrcIP() ip.IP {

@@ -60,14 +60,14 @@ func newPacket(payload []byte, t Type) (*Packet, error) {
 		Type:    t,
 		Payload: payload,
 	}
-	if IsHasLoopbackPrefix && t == Data {
+	if IsHasLoopbackPrefix && t == DATA {
 		p.Payload = p.Payload[len(loopbackPrefix):]
 	}
 	return p, nil
 }
 
 func (p *Packet) Data() []byte {
-	if IsHasLoopbackPrefix && p.Type == Data {
+	if IsHasLoopbackPrefix && p.Type == DATA {
 		b := make([]byte, len(p.Payload)+len(loopbackPrefix))
 		copy(b, loopbackPrefix)
 		copy(b[4:], p.Payload)

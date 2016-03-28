@@ -61,9 +61,9 @@ loop:
 			break
 		}
 		switch p.Type {
-		case packet.HeartBeat:
+		case packet.HEARTBEAT:
 			d.writeChan <- p.Reply(heart)
-		case packet.HeartBeatResp:
+		case packet.HEARTBEAT_R:
 			d.heartBeat.Receive(p.IV)
 		default:
 			select {

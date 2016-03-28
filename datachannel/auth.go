@@ -22,7 +22,7 @@ type SvrDelegate interface {
 
 // try resend or timeout
 func ClientCheckAuth(conn net.Conn, session *packet.SessionIV) error {
-	p := packet.New(session.Token, packet.Auth)
+	p := packet.New(session.Token, packet.AUTH)
 	if _, err := conn.Write(p.Marshal(session)); err != nil {
 		return logex.Trace(err)
 	}
@@ -61,14 +61,14 @@ func ServerCheckAuth(delegate SvrDelegate, port int, conn net.Conn) (*packet.Ses
 	if err != nil {
 		return nil, logex.Trace(err)
 	}
-	if p.Type != packet.Auth {
+	if p.Type != packet.AUTH {
 		return nil, ErrUnexpectedPacketType.Trace()
 	}
 	if !bytes.Equal(s.Token, p.Payload) {
 		return nil, packet.ErrInvalidToken.Trace()
 	}
 
-	p = packet.New(s.Token, packet.AuthResp)
+	p = packet.New(s.Token, packet.AUTH_R)
 	if _, err := conn.Write(p.Marshal(s)); err != nil {
 		return nil, logex.Trace(err)
 	}

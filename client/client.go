@@ -123,9 +123,9 @@ func (c *Client) Run() {
 			case <-c.flow.IsClose():
 				break loop
 			case data := <-tunOut:
-				c.dcIn <- packet.New(data, packet.Data)
+				c.dcIn <- packet.New(data, packet.DATA)
 			case pRecv := <-c.dcOut:
-				if pRecv.Type == packet.Data {
+				if pRecv.Type == packet.DATA {
 					tunIn <- pRecv.Data()
 				}
 			}

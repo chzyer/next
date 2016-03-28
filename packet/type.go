@@ -6,14 +6,17 @@ type Type int
 
 // packet type
 const (
-	_        = Type(iota)
-	Auth     // auth req, ignore
-	AuthResp // ignore
-	Data     // use to transfer data
-	DataResp // ack the transfer
+	_      = Type(iota)
+	AUTH   // payload: token
+	AUTH_R // payload: token
+	DATA   // nil: ip packet
+	DATA_R // payload: nil
 
-	HeartBeat
-	HeartBeatResp
+	HEARTBEAT   // payload: nil
+	HEARTBEAT_R // payload: nil
+
+	NEWDC   // payload: json([port])
+	NEWDC_R // payload: nil
 
 	InvalidType
 )
@@ -28,18 +31,22 @@ func (t Type) IsResp() bool {
 
 func (t Type) String() string {
 	switch t {
-	case Auth:
+	case AUTH:
 		return "Auth"
-	case AuthResp:
+	case AUTH_R:
 		return "AuthResp"
-	case Data:
+	case DATA:
 		return "Data"
-	case DataResp:
+	case DATA_R:
 		return "DataResp"
-	case HeartBeat:
+	case HEARTBEAT:
 		return "HeartBeat"
-	case HeartBeatResp:
+	case HEARTBEAT_R:
 		return "HeartBeatResp"
+	case NEWDC:
+		return "NewDC"
+	case NEWDC_R:
+		return "NewDCResp"
 	default:
 		return fmt.Sprintf("<unknown type>:%v", int(t))
 	}

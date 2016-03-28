@@ -63,11 +63,11 @@ loop:
 				}
 			} else {
 				switch p.Type {
-				case packet.Data:
+				case packet.DATA:
 					payload := p.Payload
 					c.toTun <- payload
 					// reply
-					p.Type = packet.DataResp
+					p.Type = packet.DATA_R
 					c.writeChan <- p
 				default:
 					logex.Error("unexpected packet type: ", p.Type)

@@ -8,26 +8,30 @@ import (
 	"github.com/chzyer/flow"
 )
 
-type heartBeatStatMin struct {
+type HeartBeatStatInfo struct {
 	total  time.Duration
 	count  int64
 	droped int64
 }
 
-func (s *heartBeatStatMin) dropStr() string {
+func (s *HeartBeatStatInfo) dropStr() string {
 	return fmt.Sprintf("%v/%v", s.droped, s.count)
 }
 
-func (s *heartBeatStatMin) rtt() time.Duration {
+func (s *HeartBeatStatInfo) rtt() time.Duration {
 	if s.count == 0 {
 		return 0
 	}
 	d := s.total / time.Duration(s.count)
-	d = d / time.Millisecond * time.Millisecond
+	if d > time.Millisecond {
+		d = d / time.Millisecond * time.Millisecond
+	} else if d > time.Microsecond {
+		d = d / time.Microsecond * time.Microsecond
+	}
 	return d
 }
 
-func (s *heartBeatStatMin) Add(s2 *heartBeatStatMin) {
+func (s *HeartBeatStatInfo) Add(s2 *HeartBeatStatInfo) {
 	s.total += s2.total
 	s.count += s2.count
 	s.droped += s2.droped
@@ -36,12 +40,12 @@ func (s *heartBeatStatMin) Add(s2 *heartBeatStatMin) {
 type HeartBeatStat struct {
 	start    time.Time
 	lastTime int
-	slots    [30]heartBeatStatMin // 15 mintue, 30s one second
+	slots    [30]HeartBeatStatInfo // 15 mintue, 30s one second
 	size     int
 }
 
-func (s *HeartBeatStat) getMin(n int) *heartBeatStatMin {
-	h := &heartBeatStatMin{}
+func (s *HeartBeatStat) getMin(n int) *HeartBeatStatInfo {
+	h := &HeartBeatStatInfo{}
 	n *= 2
 	if n > s.size {
 		n = s.size
@@ -52,7 +56,7 @@ func (s *HeartBeatStat) getMin(n int) *heartBeatStatMin {
 	return h
 }
 
-func (s *HeartBeatStat) getSlot() *heartBeatStatMin {
+func (s *HeartBeatStat) getSlot() *HeartBeatStatInfo {
 	now := time.Now()
 	ts := now.Minute() * 2
 	if now.Second() > 30 {
@@ -64,7 +68,7 @@ func (s *HeartBeatStat) getSlot() *heartBeatStatMin {
 		for i := s.size - 1; i >= 1; i-- {
 			s.slots[i] = s.slots[i-1]
 		}
-		s.slots[0] = heartBeatStatMin{}
+		s.slots[0] = HeartBeatStatInfo{}
 
 		if s.size < len(s.slots) {
 			s.size++
@@ -155,7 +159,7 @@ func NewHeartBeatStage(f *flow.Flow, timeout time.Duration, name string, clean f
 }
 
 func (h *HeartBeatStage) New() *Packet {
-	return New(nil, HeartBeat)
+	return New(nil, HEARTBEAT)
 }
 
 func (h *HeartBeatStage) Add(iv *IV) {
