@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"io"
 	"math/rand"
-	"sync/atomic"
 	"time"
 
 	"github.com/chzyer/next/crypto"
@@ -13,14 +12,9 @@ import (
 )
 
 var (
-	reqId           = new(uint32)
 	ErrPortNotMatch = logex.Define("port %v is not matched")
 	ErrUserNotMatch = logex.Define("user %v is not matched")
 )
-
-func GetReqId() uint32 {
-	return atomic.LoadUint32(reqId)
-}
 
 type SessionIV struct {
 	UserId uint16
@@ -70,12 +64,12 @@ func (c *SessionIV) Verify(iv *IV) error {
 	return nil
 }
 
-func (c *SessionIV) GenIV() []byte {
+func (c *SessionIV) GenIV(reqId uint32) []byte {
 	buf := bytes.NewBuffer(make([]byte, 0, 16))
-	binary.Write(buf, binary.BigEndian, c.UserId)                   // 2
-	binary.Write(buf, binary.BigEndian, c.Port)                     // 2
-	binary.Write(buf, binary.BigEndian, atomic.AddUint32(reqId, 1)) // 4
-	binary.Write(buf, binary.BigEndian, rand.Int63())               // 8
+	binary.Write(buf, binary.BigEndian, c.UserId)     // 2
+	binary.Write(buf, binary.BigEndian, c.Port)       // 2
+	binary.Write(buf, binary.BigEndian, reqId)        // 4
+	binary.Write(buf, binary.BigEndian, rand.Int63()) // 8
 	return buf.Bytes()
 }
 
@@ -84,6 +78,28 @@ type IV struct {
 	Port   uint16
 	ReqId  uint32
 	Data   []byte
+}
+
+func LazyIV(reqId uint32) *IV {
+	return &IV{
+		ReqId: reqId,
+	}
+}
+
+func (iv *IV) Init(s *SessionIV) {
+	if iv.Data != nil {
+		return
+	}
+
+	iv.Data = make([]byte, 16)
+	iv.UserId = s.UserId
+	binary.BigEndian.PutUint16(iv.Data, iv.UserId)
+
+	iv.Port = s.Port
+	binary.BigEndian.PutUint16(iv.Data[2:], iv.Port)
+
+	binary.BigEndian.PutUint32(iv.Data[4:], iv.ReqId)
+	binary.BigEndian.PutUint64(iv.Data[8:], uint64(s.Rand.Int63()))
 }
 
 func ParseIV(byte []byte) *IV {

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/chzyer/flow"
+	"github.com/chzyer/next/controller"
 	"github.com/chzyer/next/datachannel"
 	"github.com/chzyer/next/packet"
 	"github.com/chzyer/next/route"
@@ -20,6 +21,8 @@ type Client struct {
 	tun   *Tun
 	shell *Shell
 	route *route.Route
+
+	ctl *controller.Client
 
 	dcs   *datachannel.Client
 	dcIn  chan *packet.Packet
@@ -96,6 +99,11 @@ func (c *Client) initRoute() {
 	}
 }
 
+func (c *Client) initController(toDC chan<- *packet.Packet, fromDC <-chan *packet.Packet, toTun chan<- []byte) error {
+	c.ctl = controller.NewClient(c.flow, toDC, fromDC, toTun)
+	return nil
+}
+
 func (c *Client) Run() {
 	remoteCfg, err := c.Login()
 	if err != nil {
@@ -116,6 +124,11 @@ func (c *Client) Run() {
 		return
 	}
 
+	if err := c.initController(c.dcIn, c.dcOut, tunIn); err != nil {
+		c.flow.Error(err)
+		return
+	}
+
 	go func() {
 	loop:
 		for {
@@ -123,11 +136,8 @@ func (c *Client) Run() {
 			case <-c.flow.IsClose():
 				break loop
 			case data := <-tunOut:
-				c.dcIn <- packet.New(data, packet.DATA)
-			case pRecv := <-c.dcOut:
-				if pRecv.Type == packet.DATA {
-					tunIn <- pRecv.Data()
-				}
+				p := packet.New(data, packet.DATA)
+				c.ctl.Send(p)
 			}
 		}
 	}()

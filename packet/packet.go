@@ -76,19 +76,30 @@ func (p *Packet) Data() []byte {
 	return p.Payload
 }
 
+func (p *Packet) InitIV(reqId uint32) *IV {
+	p.IV = LazyIV(reqId)
+	return p.IV
+}
+
 func (p *Packet) Marshal(s *SessionIV) []byte {
 	// 1. iv [0:16]
 	// 2. crc32(payload+type) [16:20]
 	// 3. aes(crc32(payload+type), token, iv) [20: 24]
 	// 4. len(payload+type) [24: 26]
 	// 5. aes(payload+type, token, iv) [26:]
+	if p.IV == nil {
+		switch p.Type {
+		case AUTH, HEARTBEAT:
+			p.InitIV(0)
+		default:
+			panic("iv is null, " + p.Type.String())
+		}
+	}
+	p.IV.Init(s)
 
 	bodyLength := len(p.Payload) + 1
 	totalLength := 26 + bodyLength
 	buffer := make([]byte, totalLength)
-	if p.IV == nil {
-		p.IV = ParseIV(s.GenIV())
-	}
 
 	// 5.2, fill payload and type
 	copy(buffer[len(buffer)-1:], p.Type.Bytes())

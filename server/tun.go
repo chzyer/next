@@ -32,11 +32,11 @@ func newTun(f *flow.Flow, cfg *Config) (*Tun, error) {
 	return t, nil
 }
 
-func (t *Tun) WriteChan() chan []byte {
+func (t *Tun) WriteChan() chan<- []byte {
 	return t.in
 }
 
-func (t *Tun) ReadChan() chan []byte {
+func (t *Tun) ReadChan() <-chan []byte {
 	return t.out
 }
 

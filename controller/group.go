@@ -1,33 +1,32 @@
-package server
+package controller
 
 import (
 	"sync"
 
-	"gopkg.in/logex.v1"
-
 	"github.com/chzyer/flow"
 	"github.com/chzyer/next/packet"
 	"github.com/chzyer/next/uc"
+	"gopkg.in/logex.v1"
 )
 
-type ControllerGroup struct {
+type Group struct {
 	flow   *flow.Flow
-	online map[uint16]*Controller
-	toTun  chan []byte
+	online map[uint16]*Server
+	toTun  chan<- []byte
 	users  *uc.Users
 	mutex  sync.RWMutex
 }
 
-func NewControllerGroup(f *flow.Flow, users *uc.Users, toTun chan []byte) *ControllerGroup {
-	return &ControllerGroup{
+func NewGroup(f *flow.Flow, users *uc.Users, toTun chan<- []byte) *Group {
+	return &Group{
 		users:  users,
-		online: make(map[uint16]*Controller),
+		online: make(map[uint16]*Server),
 		toTun:  toTun,
 		flow:   f,
 	}
 }
 
-func (c *ControllerGroup) RunDeliver(fromTun chan []byte) {
+func (c *Group) RunDeliver(fromTun <-chan []byte) {
 loop:
 	for {
 		select {
@@ -41,18 +40,18 @@ loop:
 			c.mutex.RLock()
 			ctl := c.online[u.Id]
 			c.mutex.RUnlock()
-			ctl.WritePacket(d.Packet)
+			ctl.Send(d.Packet)
 		case <-c.flow.IsClose():
 			break loop
 		}
 	}
 }
 
-func (c *ControllerGroup) UserLogin(u *uc.User) *Controller {
+func (c *Group) UserLogin(u *uc.User) *Server {
 	c.mutex.Lock()
 	controller, ok := c.online[u.Id]
 	if !ok {
-		controller = NewController(c.flow, u, c.toTun)
+		controller = NewServer(c.flow, u, c.toTun)
 		c.online[u.Id] = controller
 	} else {
 		controller.UserRelogin(u)

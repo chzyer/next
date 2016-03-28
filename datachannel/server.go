@@ -28,10 +28,12 @@ func (m *Server) GetDataChannel() int {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
-	if len(m.listeners) == 0 {
-		return -1
+	for _, ln := range m.listeners {
+		if ln != nil {
+			return ln.GetPort()
+		}
 	}
-	return m.listeners[0].GetPort()
+	return -1
 }
 
 func (m *Server) GetAllDataChannel() []int {
@@ -66,7 +68,7 @@ loop:
 
 func (m *Server) removeListener(idx int) {
 	m.mutex.Lock()
-	m.listeners = append(m.listeners[:idx], m.listeners[idx+1:]...)
+	m.listeners[idx] = nil
 	m.mutex.Unlock()
 	select {
 	case m.onListenerExit <- struct{}{}:
@@ -74,19 +76,28 @@ func (m *Server) removeListener(idx int) {
 	}
 }
 
+func (m *Server) findNewSlot() int {
+	for idx, ln := range m.listeners {
+		if ln == nil {
+			return idx
+		}
+	}
+	m.listeners = append(m.listeners, nil)
+	return len(m.listeners) - 1
+}
+
 func (m *Server) AddChannelListener() error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
-	idx := len(m.listeners)
+	idx := m.findNewSlot()
 	ln, err := NewListener(m.flow, m.delegate, func() {
 		m.removeListener(idx)
 	})
 	if err != nil {
 		return logex.Trace(err)
 	}
-
-	m.listeners = append(m.listeners, ln)
+	m.listeners[idx] = ln
 
 	go ln.Serve()
 	return nil

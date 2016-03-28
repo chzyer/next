@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/chzyer/flow"
+	"github.com/chzyer/next/controller"
 	"github.com/chzyer/next/datachannel"
 	"github.com/chzyer/next/ip"
 	"github.com/chzyer/next/packet"
@@ -22,7 +23,7 @@ type Server struct {
 	dhcp  *ip.DHCP
 	tun   *Tun
 
-	controllerGroup *ControllerGroup
+	controllerGroup *controller.Group
 	dcs             *datachannel.Server
 }
 
@@ -88,7 +89,7 @@ func (s *Server) initAndRunTun() bool {
 }
 
 func (s *Server) initControllerGroup() {
-	s.controllerGroup = NewControllerGroup(s.flow, s.uc, s.tun.WriteChan())
+	s.controllerGroup = controller.NewGroup(s.flow, s.uc, s.tun.WriteChan())
 	go s.controllerGroup.RunDeliver(s.tun.ReadChan())
 }
 
