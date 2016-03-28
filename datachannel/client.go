@@ -3,8 +3,7 @@ package datachannel
 import (
 	"bytes"
 	"fmt"
-	"strconv"
-	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -12,6 +11,7 @@ import (
 
 	"github.com/chzyer/flow"
 	"github.com/chzyer/next/packet"
+	"github.com/chzyer/next/util"
 )
 
 const (
@@ -26,12 +26,7 @@ type dcSlot struct {
 	dc          *DC
 }
 
-func newDcSlot(host string) dcSlot {
-	idx := strings.Index(host, ":")
-	port, err := strconv.Atoi(host[idx+1:])
-	if err != nil {
-		panic(err)
-	}
+func newDcSlot(host string, port int) dcSlot {
 	return dcSlot{
 		Addr: host,
 		Port: uint16(port),
@@ -45,6 +40,8 @@ type Client struct {
 	flow    *flow.Flow
 	session *packet.SessionIV
 	running int32
+
+	mutex sync.Mutex
 
 	in           chan *packet.Packet
 	out          chan *packet.Packet
@@ -67,8 +64,7 @@ func NewClient(f *flow.Flow, host string, port int, s *packet.SessionIV,
 		kickFire: make(chan struct{}, 1),
 	}
 	f.ForkTo(&dc.flow, dc.Close)
-	hosts := []string{fmt.Sprintf("%v:%v", host, port)}
-	dc.slots = dc.makeSlots(hosts, DataChannelSize)
+	dc.slots = dc.makeSlots(dc.ports, DataChannelSize)
 	go dc.loop()
 	return dc
 }
@@ -83,7 +79,9 @@ func (d *Client) SetOnAllChannelsBackoff(f func()) {
 
 func (d *Client) loop() {
 	for {
+		d.mutex.Lock()
 		slotIdx, wait := d.findOff()
+		d.mutex.Unlock()
 		if slotIdx < 0 {
 			select {
 			case <-d.kickFire:
@@ -93,10 +91,12 @@ func (d *Client) loop() {
 			}
 			continue
 		}
+
+		d.mutex.Lock()
 		_, err := d.newDC(slotIdx)
+		d.mutex.Unlock()
 		if err != nil {
 			logex.Error(err, d.running)
-			continue
 		}
 	}
 }
@@ -124,27 +124,71 @@ func (d *Client) findOff() (int, time.Duration) {
 	return -1, wait
 }
 
-func (d *Client) makeSlots(remoteAddrs []string, size int) []dcSlot {
-	slots := make([]dcSlot, 0, len(remoteAddrs)*size)
+func (d *Client) makeSlots(ports []int, size int) []dcSlot {
+	slots := make([]dcSlot, 0, len(ports)*size)
 	for i := 0; i < size; i++ {
-		for _, addr := range remoteAddrs {
-			slots = append(slots, newDcSlot(addr))
+		for _, port := range ports {
+			slots = append(slots, newDcSlot(d.host, port))
 		}
 	}
 	return slots
 }
 
+func (d *Client) compareSlots(ports []int) (remain []int, newp []int) {
+	for _, p := range d.ports {
+		if util.IntIn(p, ports) {
+			remain = append(remain, p)
+		}
+	}
+	for _, p := range ports {
+		if !util.IntIn(p, remain) {
+			newp = append(newp, p)
+		}
+	}
+	return
+}
+
+func (d *Client) makeNewSlots(ports []int) {
+	remain, newp := d.compareSlots(ports)
+	// not new and not delete
+	if len(newp) == 0 && len(remain) == len(d.ports) {
+		return
+	}
+
+	d.mutex.Lock()
+	defer d.mutex.Unlock()
+	newSlots := make([]dcSlot, 0, (len(newp)+len(remain))*DataChannelSize)
+
+	for _, slot := range d.slots {
+		if util.IntIn(int(slot.Port), remain) {
+			newSlots = append(newSlots, slot)
+		}
+	}
+	for _, p := range newp {
+		for i := 0; i < DataChannelSize; i++ {
+			newSlots = append(newSlots, newDcSlot(d.host, p))
+		}
+	}
+	d.slots = newSlots
+}
+
 func (d *Client) UpdateRemoteAddrs(ports []int) {
+	logex.Info("new client", ports)
+	d.makeNewSlots(ports)
+
 	select {
 	case d.kickFire <- struct{}{}:
 	default:
 	}
 }
 
+// inlock
 func (d *Client) newDC(idx int) (*DC, error) {
+
 	host := d.slots[idx].Addr
 	port := d.slots[idx].Port
-	dc, err := DialDC(host, d.flow, d.session.Clone(port),
+	endpoint := fmt.Sprintf("%v:%v", host, port)
+	dc, err := DialDC(endpoint, d.flow, d.session.Clone(port),
 		d.onDataChannelExits(idx), d.in, d.out)
 	if err != nil {
 		d.slots[idx].backoffTime = time.Now().Add(10 * time.Second)
@@ -158,6 +202,8 @@ func (d *Client) newDC(idx int) (*DC, error) {
 }
 
 func (d *Client) GetStats() string {
+	d.mutex.Lock()
+	defer d.mutex.Unlock()
 	buf := bytes.NewBuffer(nil)
 	for idx := range d.slots {
 		dc := d.slots[idx].dc
@@ -170,6 +216,7 @@ func (d *Client) GetStats() string {
 
 func (d *Client) onDataChannelExits(idx int) func() {
 	return func() {
+		d.mutex.Lock()
 		d.slots[idx].On = false
 		d.slots[idx].dc = nil
 		if atomic.AddInt32(&d.running, -1) == 0 {
@@ -177,6 +224,7 @@ func (d *Client) onDataChannelExits(idx int) func() {
 				d.onAllBackoff()
 			}
 		}
+		d.mutex.Unlock()
 		select {
 		case d.kickFire <- struct{}{}:
 		default:
