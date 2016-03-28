@@ -3,6 +3,7 @@ package controller
 import (
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/chzyer/flow"
 	"github.com/chzyer/next/packet"
@@ -99,9 +100,8 @@ loop:
 		case <-c.flow.IsClose():
 			break loop
 		case p := <-c.fromDC:
-
 			if p.Type.IsResp() {
-
+				// println("I got Reply:", p.IV.ReqId)
 				c.stagingGruad.Lock()
 				if staging := c.staging[p.IV.ReqId]; staging != nil {
 					if staging.Reply != nil {
@@ -114,6 +114,7 @@ loop:
 				}
 				c.stagingGruad.Unlock()
 			} else {
+				// println("I need Reply to:", p.IV.ReqId)
 				select {
 				case c.out <- p:
 				case <-c.flow.IsClose():
@@ -125,6 +126,9 @@ loop:
 }
 
 func (c *Controller) resendLoop() {
+	for _ = range time.Tick(time.Second) {
+		// println(len(c.staging))
+	}
 }
 
 func (c *Controller) writeLoop() {
@@ -139,9 +143,13 @@ loop:
 		case req := <-c.in:
 			// add to staging
 			c.stagingGruad.Lock()
-			req.Packet.InitIV(c.GetReqId())
 			if req.Packet.Type.IsReq() {
+				req.Packet.InitIV(c.GetReqId())
 				c.staging[req.Packet.IV.ReqId] = req
+				// println("I add to stage: ",
+				//	req.Packet.IV.ReqId, req.Packet.Type.String())
+			} else {
+				// println("I reply to:", req.Packet.IV.ReqId)
 			}
 			c.toDC <- req.Packet
 			c.stagingGruad.Unlock()
