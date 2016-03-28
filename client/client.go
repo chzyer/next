@@ -44,12 +44,13 @@ func (c *Client) Close() {
 }
 
 func (c *Client) initDataChannel(remoteCfg *uc.AuthResponse) (err error) {
-	port := remoteCfg.GetDataChannelPort()
+	port := remoteCfg.DataChannel
 	session := packet.NewSessionIV(
 		uint16(remoteCfg.UserId), uint16(port), []byte(remoteCfg.Token))
 
 	dcs := datachannel.NewClient(c.flow,
-		[]string{remoteCfg.DataChannel}, session, c.dcIn, c.dcOut)
+		c.cfg.GetHostName(), port,
+		session, c.dcIn, c.dcOut)
 
 	dcs.SetOnAllChannelsBackoff(func() {
 		dcs.Close()
@@ -100,7 +101,7 @@ func (c *Client) initRoute() {
 }
 
 func (c *Client) initController(toDC chan<- *packet.Packet, fromDC <-chan *packet.Packet, toTun chan<- []byte) error {
-	c.ctl = controller.NewClient(c.flow, toDC, fromDC, toTun)
+	c.ctl = controller.NewClient(c.flow, c, toDC, fromDC, toTun)
 	return nil
 }
 
@@ -155,4 +156,10 @@ func (c *Client) runShell() error {
 	logex.Info("listen debug sock in", strconv.Quote(c.cfg.Sock))
 	go shell.loop()
 	return nil
+}
+
+// -----------------------------------------------------------------------------
+// controller
+func (c *Client) OnNewDC(ports []int) {
+	c.dcs.UpdateRemoteAddrs(ports)
 }

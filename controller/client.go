@@ -1,20 +1,28 @@
 package controller
 
 import (
+	"encoding/json"
+
 	"github.com/chzyer/flow"
 	"github.com/chzyer/next/packet"
 )
 
-type Client struct {
-	*Controller
-	toTun chan<- []byte
+type CliDelegate interface {
+	OnNewDC(port []int)
 }
 
-func NewClient(f *flow.Flow, toDC chan<- *packet.Packet, fromDC <-chan *packet.Packet, toTun chan<- []byte) *Client {
+type Client struct {
+	*Controller
+	toTun    chan<- []byte
+	delegate CliDelegate
+}
+
+func NewClient(f *flow.Flow, delegate CliDelegate, toDC chan<- *packet.Packet, fromDC <-chan *packet.Packet, toTun chan<- []byte) *Client {
 	ctl := NewController(f, toDC, fromDC)
 	cli := &Client{
 		Controller: ctl,
 		toTun:      toTun,
+		delegate:   delegate,
 	}
 	go cli.loop()
 	return cli
@@ -28,11 +36,18 @@ loop:
 	for {
 		select {
 		case pRecv := <-out:
-			if pRecv.Type == packet.DATA {
+			switch pRecv.Type {
+			case packet.DATA:
 				select {
 				case c.toTun <- pRecv.Data():
 				case <-c.flow.IsClose():
 					break loop
+				}
+			case packet.NEWDC:
+				var port []int
+				json.Unmarshal(pRecv.Payload, &port)
+				if len(port) > 0 {
+					c.delegate.OnNewDC(port)
 				}
 			}
 			c.Send(pRecv.Reply(nil))

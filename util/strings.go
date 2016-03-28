@@ -8,3 +8,12 @@ func FillString(s string, n int, ch string) string {
 	}
 	return s + strings.Repeat(ch, n-len(s))
 }
+
+func In(s string, ss []string) bool {
+	for _, sss := range ss {
+		if sss == s {
+			return true
+		}
+	}
+	return false
+}

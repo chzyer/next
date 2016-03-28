@@ -54,7 +54,7 @@ func (h *HttpApi) Auth(w http.ResponseWriter, req *http.Request) {
 		INet:        u.Net.String(),
 		MTU:         h.delegate.GetMTU(),
 		Token:       u.Token,
-		DataChannel: h.delegate.GetDataChannel(host),
+		DataChannel: h.delegate.GetDataChannel(),
 	}
 	h.reply(w, ret)
 }

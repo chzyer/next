@@ -30,7 +30,7 @@ type HttpDelegate interface {
 	AllocIP() *ip.IP
 	GetGateway() *ip.IPNet
 	GetMTU() int
-	GetDataChannel(string) string
+	GetDataChannel() int
 	OnNewUser(userId int)
 }
 

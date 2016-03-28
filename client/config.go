@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+	"net/url"
 	"strings"
 
 	"gopkg.in/logex.v1"
@@ -24,6 +25,18 @@ type Config struct {
 
 	Host2 string `name:"host"`
 	Host  string `name:"[0]"`
+}
+
+func (c *Config) GetHostName() string {
+	u, err := url.Parse(c.Host)
+	if err != nil {
+		panic(err)
+	}
+	idx := strings.Index(u.Host, ":")
+	if idx > 0 {
+		u.Host = u.Host[:idx]
+	}
+	return u.Host
 }
 
 func (c *Config) FlaglyVerify() error {

@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"strconv"
 
 	"github.com/chzyer/flow"
@@ -89,7 +88,7 @@ func (s *Server) initAndRunTun() bool {
 }
 
 func (s *Server) initControllerGroup() {
-	s.controllerGroup = controller.NewGroup(s.flow, s.uc, s.tun.WriteChan())
+	s.controllerGroup = controller.NewGroup(s.flow, s, s.uc, s.tun.WriteChan())
 	go s.controllerGroup.RunDeliver(s.tun.ReadChan())
 }
 
@@ -157,6 +156,13 @@ func (s *Server) GetMTU() int {
 	return s.cfg.MTU
 }
 
-func (s *Server) GetDataChannel(host string) string {
-	return fmt.Sprintf("%s:%v", host, s.dcs.GetDataChannel())
+func (s *Server) GetDataChannel() int {
+	return s.dcs.GetDataChannel()
+}
+
+// -----------------------------------------------------------------------------
+// controller
+
+func (s *Server) GetAllDataChannel() []int {
+	return s.dcs.GetAllDataChannel()
 }

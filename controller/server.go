@@ -1,6 +1,8 @@
 package controller
 
 import (
+	"encoding/json"
+
 	"github.com/chzyer/flow"
 	"github.com/chzyer/next/packet"
 	"github.com/chzyer/next/uc"
@@ -24,6 +26,14 @@ func NewServer(f *flow.Flow, u *uc.User, toTun chan<- []byte) *Server {
 	}
 	go s.loop()
 	return s
+}
+
+func (s *Server) NotifyDataChannel(port []int) {
+	ret, err := json.Marshal(port)
+	if err != nil {
+		panic(err)
+	}
+	s.Send(packet.New(ret, packet.NEWDC))
 }
 
 func (s *Server) loop() {

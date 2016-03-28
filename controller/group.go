@@ -9,20 +9,26 @@ import (
 	"gopkg.in/logex.v1"
 )
 
-type Group struct {
-	flow   *flow.Flow
-	online map[uint16]*Server
-	toTun  chan<- []byte
-	users  *uc.Users
-	mutex  sync.RWMutex
+type SvrDelegate interface {
+	GetAllDataChannel() []int
 }
 
-func NewGroup(f *flow.Flow, users *uc.Users, toTun chan<- []byte) *Group {
+type Group struct {
+	delegate SvrDelegate
+	flow     *flow.Flow
+	online   map[uint16]*Server
+	toTun    chan<- []byte
+	users    *uc.Users
+	mutex    sync.RWMutex
+}
+
+func NewGroup(f *flow.Flow, delegate SvrDelegate, users *uc.Users, toTun chan<- []byte) *Group {
 	return &Group{
-		users:  users,
-		online: make(map[uint16]*Server),
-		toTun:  toTun,
-		flow:   f,
+		delegate: delegate,
+		users:    users,
+		online:   make(map[uint16]*Server),
+		toTun:    toTun,
+		flow:     f,
 	}
 }
 
@@ -57,5 +63,6 @@ func (c *Group) UserLogin(u *uc.User) *Server {
 		controller.UserRelogin(u)
 	}
 	c.mutex.Unlock()
+	controller.NotifyDataChannel(c.delegate.GetAllDataChannel())
 	return controller
 }

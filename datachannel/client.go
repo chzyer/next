@@ -2,6 +2,7 @@ package datachannel
 
 import (
 	"bytes"
+	"fmt"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -38,11 +39,12 @@ func newDcSlot(host string) dcSlot {
 }
 
 type Client struct {
-	slots       []dcSlot
-	remoteAddrs []string
-	flow        *flow.Flow
-	session     *packet.SessionIV
-	running     int32
+	slots   []dcSlot
+	ports   []int
+	host    string
+	flow    *flow.Flow
+	session *packet.SessionIV
+	running int32
 
 	in           chan *packet.Packet
 	out          chan *packet.Packet
@@ -51,12 +53,13 @@ type Client struct {
 	kickFire     chan struct{}
 }
 
-func NewClient(f *flow.Flow, remoteAddrs []string, s *packet.SessionIV,
+func NewClient(f *flow.Flow, host string, port int, s *packet.SessionIV,
 	dcIn, dcOut chan *packet.Packet) *Client {
 
 	dc := &Client{
-		session:     s,
-		remoteAddrs: remoteAddrs,
+		session: s,
+		host:    host,
+		ports:   []int{port},
 
 		in:       dcIn,
 		out:      dcOut,
@@ -64,7 +67,8 @@ func NewClient(f *flow.Flow, remoteAddrs []string, s *packet.SessionIV,
 		kickFire: make(chan struct{}, 1),
 	}
 	f.ForkTo(&dc.flow, dc.Close)
-	dc.slots = dc.makeSlots(remoteAddrs, DataChannelSize)
+	hosts := []string{fmt.Sprintf("%v:%v", host, port)}
+	dc.slots = dc.makeSlots(hosts, DataChannelSize)
 	go dc.loop()
 	return dc
 }
@@ -130,7 +134,7 @@ func (d *Client) makeSlots(remoteAddrs []string, size int) []dcSlot {
 	return slots
 }
 
-func (d *Client) UpdateRemoteAddrs(remoteAddrs []string) {
+func (d *Client) UpdateRemoteAddrs(ports []int) {
 	select {
 	case d.kickFire <- struct{}{}:
 	default:
