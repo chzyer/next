@@ -1,3 +1,4 @@
+// Package route handle route table for darwin/linux.
 package route
 
 import (
@@ -18,6 +19,7 @@ var (
 	ErrRouteItemExists   = logex.Define("route item '%v' is exists")
 )
 
+// one line "CIDR\tCOMMENT"
 type Item struct {
 	CIDR    string
 	Comment string
@@ -25,6 +27,10 @@ type Item struct {
 
 func NewItem(cidr string, comment string) *Item {
 	return &Item{formatCIDR(cidr), comment}
+}
+
+func (i *Item) String() string {
+	return fmt.Sprintf("%v\t%v", i.CIDR, i.Comment)
 }
 
 type Route struct {
@@ -186,7 +192,7 @@ func (r *Route) Load(fp string) error {
 func (r *Route) Save(fp string) error {
 	buf := bytes.NewBuffer(nil)
 	for _, item := range *r.items {
-		fmt.Fprintf(buf, "%v\t%v\n", item.CIDR, item.Comment)
+		fmt.Fprintln(buf, item)
 	}
 	return logex.Trace(ioutil.WriteFile(fp, buf.Bytes(), 0644))
 }

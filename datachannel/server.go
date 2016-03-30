@@ -41,6 +41,7 @@ func (m *Server) GetAllDataChannel() []int {
 	defer m.mutex.Unlock()
 	ret := make([]int, len(m.listeners))
 	for idx, ln := range m.listeners {
+		// BUG(chzyer): ln can be nil
 		ret[idx] = ln.GetPort()
 	}
 	return ret

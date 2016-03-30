@@ -1,4 +1,7 @@
+// Package packet handling packet communicate between server and client.
+//
 // Packet Layout
+//
 //   --------------------------------------------------------------
 //   iv +
 //   crc32(type+payload) + aes(crc32(type+payload), token, iv) +

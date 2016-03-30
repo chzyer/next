@@ -6,10 +6,11 @@ type Type int
 
 // packet type
 const (
-	_      = Type(iota)
+	_ Type = iota
+
 	AUTH   // payload: token
 	AUTH_R // payload: token
-	DATA   // nil: ip packet
+	DATA   // payload: ip packet
 	DATA_R // payload: nil
 
 	HEARTBEAT   // payload: nil
@@ -17,6 +18,14 @@ const (
 
 	NEWDC   // payload: json([port])
 	NEWDC_R // payload: nil
+
+	// send bytes to remote
+	SPEED   // payload: [4096]bytes in random
+	SPEED_R // payload: nil
+
+	// let remote send N bytes to local
+	SPEED_REQ // payload: byte size(uint64)
+	SPEED_REQ_R
 
 	InvalidType
 )

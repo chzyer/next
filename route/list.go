@@ -64,6 +64,7 @@ func (e *EphemeralItems) GetFront() *EphemeralItem {
 }
 
 // -----------------------------------------------------------------------------
+
 type Items []Item
 
 func (is *Items) Append(i *Item) error {
