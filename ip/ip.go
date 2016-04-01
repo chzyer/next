@@ -28,6 +28,16 @@ func (i IP) String() string {
 	return i.IP().String()
 }
 
+func MatchIPNet(child, parent *net.IPNet) bool {
+	childOne, _ := child.Mask.Size()
+	parentOne, _ := parent.Mask.Size()
+	if childOne < parentOne {
+		// child has a bigger subnet
+		return false
+	}
+	return parent.Contains(child.IP)
+}
+
 type IPNet struct {
 	IP   IP         // network number
 	Mask net.IPMask // network mask

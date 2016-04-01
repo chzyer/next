@@ -17,6 +17,7 @@ import (
 var (
 	ErrRouteItemNotFound = logex.Define("route item '%v' not found")
 	ErrRouteItemExists   = logex.Define("route item '%v' is exists")
+	ErrRouteItemContains = logex.Define("route item '%v' contains by '%v'")
 )
 
 // one line "CIDR\tCOMMENT"
@@ -29,7 +30,7 @@ func NewItem(cidr string, comment string) *Item {
 	return &Item{formatCIDR(cidr), comment}
 }
 
-func (i *Item) String() string {
+func (i Item) String() string {
 	return fmt.Sprintf("%v\t%v", i.CIDR, i.Comment)
 }
 
@@ -140,9 +141,10 @@ func (r *Route) AddItem(i *Item) error {
 		return err
 	}
 	i.CIDR = formatCIDR(i.CIDR)
-	if err := r.items.Append(i); err != nil {
-		return err
+	if item := r.items.Match(i.CIDR); item != nil {
+		return ErrRouteItemContains.Format(i.CIDR, item.CIDR)
 	}
+	r.items.Append(i)
 	r.items.Sort()
 	return logex.Trace(r.SetRoute(i.CIDR))
 }

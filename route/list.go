@@ -2,6 +2,7 @@ package route
 
 import (
 	"container/list"
+	"net"
 	"sort"
 	"time"
 
@@ -67,14 +68,25 @@ func (e *EphemeralItems) GetFront() *EphemeralItem {
 
 type Items []Item
 
-func (is *Items) Append(i *Item) error {
-	for _, it := range *is {
-		if it.CIDR == i.CIDR {
-			return ErrRouteItemExists.Format(i.CIDR)
+func (is Items) Match(cidr string) *Item {
+	_, target, err := net.ParseCIDR(cidr)
+	if err != nil {
+		return nil
+	}
+	for _, i := range is {
+		_, ipnet, err := net.ParseCIDR(i.CIDR)
+		if err != nil {
+			continue
+		}
+		if ip.MatchIPNet(target, ipnet) {
+			return &i
 		}
 	}
-	*is = append(*is, *i)
 	return nil
+}
+
+func (is *Items) Append(i *Item) {
+	*is = append(*is, *i)
 }
 
 func (is *Items) Len() int {
