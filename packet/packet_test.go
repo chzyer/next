@@ -5,15 +5,14 @@ import (
 	"crypto/rand"
 	"testing"
 
-	"github.com/chzyer/next/test"
+	"github.com/chzyer/test"
 )
 
 func TestPacket(t *testing.T) {
 	defer test.New(t)
 	payload := make([]byte, 24)
 	rand.Read(payload)
-	packet, err := New(payload, Auth)
-	test.Nil(err)
+	packet := New(payload, AUTH)
 
 	token := make([]byte, 30)
 	rand.Read(payload)
@@ -26,7 +25,7 @@ func TestPacket(t *testing.T) {
 
 	test.Equal(packetDst.IV.Port, port)
 	test.Equal(packetDst.IV.UserId, userId)
-	test.Equal(packetDst.Type, Auth)
+	test.Equal(packetDst.Type, AUTH)
 	test.Equal(packetDst.Payload, payload)
 	test.Equal(packetDst, packet)
 

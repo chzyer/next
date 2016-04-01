@@ -4,7 +4,7 @@ import (
 	"net"
 	"testing"
 
-	"github.com/chzyer/next/test"
+	"github.com/chzyer/test"
 )
 
 func TestMatchIPNet(t *testing.T) {

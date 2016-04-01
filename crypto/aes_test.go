@@ -4,7 +4,7 @@ import (
 	"crypto/rand"
 	"testing"
 
-	"github.com/chzyer/next/test"
+	"github.com/chzyer/test"
 )
 
 func TestDeEnCode(t *testing.T) {

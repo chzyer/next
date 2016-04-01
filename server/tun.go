@@ -63,6 +63,9 @@ loop:
 }
 
 func (t *Tun) readLoop(out chan []byte) {
+	t.flow.Add(1)
+	defer t.flow.DoneAndClose()
+
 	buf := make([]byte, 65536)
 
 loop:

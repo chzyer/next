@@ -3,7 +3,7 @@ package packet
 import (
 	"testing"
 
-	"github.com/chzyer/next/test"
+	"github.com/chzyer/test"
 )
 
 func TestType(t *testing.T) {
@@ -12,7 +12,7 @@ func TestType(t *testing.T) {
 	var pt Type
 	test.True(pt.IsInvalid())
 	test.Nil(pt.Marshal([]byte{1}))
-	test.Equal(pt, Auth)
+	test.Equal(pt, AUTH)
 	test.False(pt.IsInvalid())
 	test.Equal(pt.Bytes(), []byte{1})
 }

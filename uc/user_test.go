@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/chzyer/next/test"
+	"github.com/chzyer/test"
 )
 
 func TestUsers(t *testing.T) {

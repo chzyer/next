@@ -3,7 +3,7 @@ package ip
 import (
 	"testing"
 
-	"github.com/chzyer/next/test"
+	"github.com/chzyer/test"
 )
 
 func TestDHCP(t *testing.T) {
