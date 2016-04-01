@@ -14,7 +14,7 @@ type ShellUser struct {
 }
 
 type ShellUserAdd struct {
-	Name string `name:"[0]"`
+	Name string `type:"[0]"`
 }
 
 func (c *ShellUserAdd) FlaglyHandle(s *Server, rl *readline.Instance) error {

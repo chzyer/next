@@ -2,23 +2,24 @@ package client
 
 import (
 	"fmt"
-	"net"
 
 	"github.com/chzyer/flagly"
+	"github.com/chzyer/next/ip"
 	"github.com/chzyer/readline"
 	"gopkg.in/logex.v1"
 )
 
 type ShellCLI struct {
-	Help      *flagly.CmdHelp `flagly:"handler"`
-	Ping      *ShellPing      `flagly:"handler"`
-	HeartBeat *ShellHeartBeat `flagly:"handler"`
-	Route     *ShellRoute     `flagly:"handler"`
-	Dig       *ShellDig       `flagly:"handler"`
+	Help       *flagly.CmdHelp  `flagly:"handler"`
+	Ping       *ShellPing       `flagly:"handler"`
+	HeartBeat  *ShellHeartBeat  `flagly:"handler"`
+	Route      *ShellRoute      `flagly:"handler"`
+	Dig        *ShellDig        `flagly:"handler"`
+	Controller *ShellController `flagly:"handler"`
 }
 
 type ShellDig struct {
-	Host string `name:"[0]"`
+	Host string `type:"[0]"`
 }
 
 func (sh *ShellDig) FlaglyDesc() string {
@@ -29,7 +30,7 @@ func (sh *ShellDig) FlaglyHandle(c *Client, rl *readline.Instance) error {
 	if sh.Host == "" {
 		return flagly.Error("host is required")
 	}
-	addrs, err := net.LookupHost(sh.Host)
+	addrs, err := ip.LookupHost(sh.Host)
 	if err != nil {
 		return flagly.Error(err.Error())
 	}

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/chzyer/flow"
+	"github.com/chzyer/next/ip"
 	"github.com/chzyer/next/util"
 	"gopkg.in/logex.v1"
 )
@@ -24,10 +25,27 @@ var (
 type Item struct {
 	CIDR    string
 	Comment string
+	IPNet   *net.IPNet
 }
 
-func NewItem(cidr string, comment string) *Item {
-	return &Item{formatCIDR(cidr), comment}
+func NewItemCIDR(cidr string, comment string) (*Item, error) {
+	_, ipnet, err := net.ParseCIDR(FormatCIDR(cidr))
+	if err != nil {
+		return nil, err
+	}
+	return NewItem(ipnet, comment), nil
+}
+
+func NewItem(ipnet *net.IPNet, comment string) *Item {
+	return &Item{
+		CIDR:    ipnet.String(),
+		Comment: comment,
+		IPNet:   ipnet,
+	}
+}
+
+func (i Item) Match(target *net.IPNet) bool {
+	return ip.MatchIPNet(target, i.IPNet)
 }
 
 func (i Item) String() string {
@@ -136,12 +154,18 @@ func (r *Route) AddEphemeralItem(i *EphemeralItem) error {
 	return logex.Trace(r.SetRoute(i.CIDR))
 }
 
-func (r *Route) AddItem(i *Item) error {
-	if err := checkValidCIDR(i.CIDR); err != nil {
-		return err
+func (r *Route) Match(ipnet *net.IPNet) *Item {
+	if item := r.ephemeralItems.Match(ipnet); item != nil {
+		return item.Item
 	}
-	i.CIDR = formatCIDR(i.CIDR)
-	if item := r.items.Match(i.CIDR); item != nil {
+	if item := r.items.Match(ipnet); item != nil {
+		return item
+	}
+	return nil
+}
+
+func (r *Route) AddItem(i *Item) error {
+	if item := r.Match(i.IPNet); item != nil {
 		return ErrRouteItemContains.Format(i.CIDR, item.CIDR)
 	}
 	r.items.Append(i)
@@ -174,11 +198,12 @@ func (r *Route) Load(fp string) error {
 			if len(sp) >= 2 {
 				comment = sp[1]
 			}
-			if _, _, err := net.ParseCIDR(cidr); err != nil {
-				logex.Error("parse", cidr, "error:", err)
+			item, err := NewItemCIDR(cidr, comment)
+			if err != nil {
+				logex.Error(err)
 				continue
 			}
-			if err := r.AddItem(NewItem(cidr, comment)); err != nil {
+			if err := r.AddItem(item); err != nil {
 				logex.Error("add item", cidr, "fail:", err.Error())
 			}
 		}
@@ -199,7 +224,7 @@ func (r *Route) Save(fp string) error {
 	return logex.Trace(ioutil.WriteFile(fp, buf.Bytes(), 0644))
 }
 
-func formatCIDR(cidr string) string {
+func FormatCIDR(cidr string) string {
 	if idx := strings.Index(cidr, "/"); idx < 0 {
 		cidr += "/32"
 	}

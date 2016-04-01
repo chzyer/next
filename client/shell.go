@@ -46,6 +46,13 @@ func (s *Shell) Close() {
 func (s *Shell) handleConn(conn net.Conn) {
 	defer conn.Close()
 
+	sh := &ShellCLI{}
+	fset, err := flagly.Compile("", sh)
+	if err != nil {
+		logex.Info(err)
+		return
+	}
+
 	homeDir := os.Getenv("HOME")
 	userAcct, _ := user.Current()
 	if userAcct != nil {
@@ -54,8 +61,9 @@ func (s *Shell) handleConn(conn net.Conn) {
 
 	hf := filepath.Join(homeDir, ".nextcli_history")
 	cfg := readline.Config{
-		HistoryFile: hf,
-		Prompt:      " -> ",
+		HistoryFile:  hf,
+		Prompt:       " -> ",
+		AutoComplete: &readline.SegmentComplete{fset.Completer()},
 	}
 	rl, err := readline.HandleConn(cfg, conn)
 	if err != nil {
@@ -63,12 +71,6 @@ func (s *Shell) handleConn(conn net.Conn) {
 	}
 	defer rl.Close()
 
-	sh := &ShellCLI{}
-	fset, err := flagly.Compile("", sh)
-	if err != nil {
-		logex.Info(err)
-		return
-	}
 	fset.Context(rl, s.client)
 
 	if readline.IsTerminal(0) {

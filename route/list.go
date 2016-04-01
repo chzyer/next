@@ -56,6 +56,16 @@ func (e *EphemeralItems) Add(i *EphemeralItem) {
 	e.list.PushBack(i)
 }
 
+func (e *EphemeralItems) Match(ipnet *net.IPNet) *EphemeralItem {
+	for elem := e.list.Front(); elem != nil; elem = elem.Next() {
+		item := elem.Value.(*EphemeralItem)
+		if item.Match(ipnet) {
+			return item
+		}
+	}
+	return nil
+}
+
 func (e *EphemeralItems) GetFront() *EphemeralItem {
 	elem := e.list.Front()
 	if elem == nil {
@@ -68,17 +78,9 @@ func (e *EphemeralItems) GetFront() *EphemeralItem {
 
 type Items []Item
 
-func (is Items) Match(cidr string) *Item {
-	_, target, err := net.ParseCIDR(cidr)
-	if err != nil {
-		return nil
-	}
+func (is Items) Match(ipnet *net.IPNet) *Item {
 	for _, i := range is {
-		_, ipnet, err := net.ParseCIDR(i.CIDR)
-		if err != nil {
-			continue
-		}
-		if ip.MatchIPNet(target, ipnet) {
+		if i.Match(ipnet) {
 			return &i
 		}
 	}
