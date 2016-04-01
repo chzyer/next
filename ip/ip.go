@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"net"
 	"reflect"
+	"strings"
 
 	"github.com/chzyer/flagly"
 
@@ -11,6 +12,20 @@ import (
 )
 
 type IP [4]byte
+
+func IsIP(s string) bool {
+	if idx := strings.Index(s, "/"); idx >= 0 {
+		s = s[:idx]
+	}
+	rs := []rune(s)
+	for _, r := range rs {
+		if (r >= '0' && r <= '9') || r == '.' {
+			continue
+		}
+		return false
+	}
+	return true
+}
 
 func NewIP(b []byte) (ret IP) {
 	copy(ret[:], b)
