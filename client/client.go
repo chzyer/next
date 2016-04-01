@@ -1,6 +1,7 @@
 package client
 
 import (
+	"net/http"
 	"strconv"
 	"time"
 
@@ -21,6 +22,7 @@ type Client struct {
 	tun   *Tun
 	shell *Shell
 	route *route.Route
+	HTTP  *HTTP
 
 	ctl *controller.Client
 
@@ -35,7 +37,9 @@ func New(cfg *Config, f *flow.Flow) *Client {
 		flow:  f,
 		dcIn:  make(chan *packet.Packet),
 		dcOut: make(chan *packet.Packet),
+		HTTP:  NewHTTP(cfg.Host, cfg.UserName, cfg.Password, []byte(cfg.AesKey)),
 	}
+	http.DefaultClient.Timeout = 3 * time.Second
 	return cli
 }
 
@@ -55,7 +59,7 @@ func (c *Client) initDataChannel(remoteCfg *uc.AuthResponse) (err error) {
 	dcs.SetOnAllChannelsBackoff(func() {
 		dcs.Close()
 		for {
-			resp, err := c.Login()
+			resp, err := c.HTTP.Login(c.onLogin)
 			if err != nil {
 				logex.Error(err)
 				time.Sleep(2 * time.Second)
@@ -106,7 +110,7 @@ func (c *Client) initController(toDC chan<- *packet.Packet, fromDC <-chan *packe
 }
 
 func (c *Client) Run() {
-	remoteCfg, err := c.Login()
+	remoteCfg, err := c.HTTP.Login(c.onLogin)
 	if err != nil {
 		c.flow.Error(err)
 		return

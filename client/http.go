@@ -9,15 +9,33 @@ import (
 
 	"gopkg.in/logex.v1"
 
+	"github.com/chzyer/next/crypto"
 	"github.com/chzyer/next/uc"
 	"github.com/chzyer/next/util/clock"
 )
 
-func (c *Client) httpReq(ret interface{}, path string, data interface{}) error {
+type HTTP struct {
+	Host   string
+	User   string
+	Pswd   string
+	AesKey []byte
+	clock  *clock.Clock
+}
+
+func NewHTTP(host, user, pswd string, aeskey []byte) *HTTP {
+	return &HTTP{
+		Host:   host,
+		User:   user,
+		Pswd:   pswd,
+		AesKey: aeskey,
+	}
+}
+
+func (h *HTTP) httpReq(ret interface{}, path string, data interface{}) error {
 	var resp *http.Response
 	var err error
 	if data == nil {
-		resp, err = http.Get(c.cfg.Host + path)
+		resp, err = http.Get(h.Host + path)
 	} else {
 		var jsonBody []byte
 		jsonBody, err = json.Marshal(data)
@@ -25,7 +43,7 @@ func (c *Client) httpReq(ret interface{}, path string, data interface{}) error {
 			return err
 		}
 		body := bytes.NewReader(jsonBody)
-		resp, err = http.Post(c.cfg.Host+path, "application/json", body)
+		resp, err = http.Post(h.Host+path, "application/json", body)
 	}
 	if err != nil {
 		return err
@@ -34,6 +52,8 @@ func (c *Client) httpReq(ret interface{}, path string, data interface{}) error {
 	if err != nil {
 		return err
 	}
+	crypto.DecodeAes(body, body, h.AesKey, nil)
+
 	resp.Body.Close()
 	if resp.StatusCode/100 != 2 {
 		var err replyError
@@ -46,7 +66,7 @@ func (c *Client) httpReq(ret interface{}, path string, data interface{}) error {
 	return nil
 }
 
-func (c *Client) initClock() error {
+func (c *HTTP) initClock() error {
 	var timestamp int64
 	if err := c.httpReq(&timestamp, "/time", nil); err != nil {
 		return err
@@ -56,26 +76,28 @@ func (c *Client) initClock() error {
 	return nil
 }
 
-func (c *Client) Login() (*uc.AuthResponse, error) {
+func (c *HTTP) Login(onLogin func(*uc.AuthResponse) error) (*uc.AuthResponse, error) {
 	if err := c.initClock(); err != nil {
 		return nil, logex.Trace(err)
 	}
 
-	ret, err := c.doLogin(c.cfg.UserName, c.cfg.Password)
+	ret, err := c.doLogin(c.User, c.Pswd)
 	if err != nil {
 		return nil, logex.Trace(err)
 	}
 
-	if err := c.onLogin(ret); err != nil {
-		return nil, logex.Trace(err)
+	if onLogin != nil {
+		if err := onLogin(ret); err != nil {
+			return nil, logex.Trace(err)
+		}
 	}
 
 	return ret, nil
 }
 
-func (c *Client) doLogin(username string, password string) (*uc.AuthResponse, error) {
+func (c *HTTP) doLogin(username string, password string) (*uc.AuthResponse, error) {
 	req := uc.NewAuthRequest(
-		username, c.clock.Unix(), []byte(password), []byte(c.cfg.AesKey))
+		username, c.clock.Unix(), []byte(password), c.AesKey)
 	var ret uc.AuthResponse
 	if err := c.httpReq(&ret, "/auth", req); err != nil {
 		return nil, err

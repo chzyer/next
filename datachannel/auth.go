@@ -23,9 +23,11 @@ type SvrDelegate interface {
 // try resend or timeout
 func ClientCheckAuth(conn net.Conn, session *packet.SessionIV) error {
 	p := packet.New(session.Token, packet.AUTH)
+	conn.SetWriteDeadline(time.Now().Add(2 * time.Second))
 	if _, err := conn.Write(p.Marshal(session)); err != nil {
 		return logex.Trace(err)
 	}
+	conn.SetWriteDeadline(time.Time{})
 
 	conn.SetReadDeadline(time.Now().Add(2 * time.Second))
 	pr, err := packet.Read(session, conn)

@@ -24,7 +24,7 @@ type Config struct {
 	Sock string `desc:"unixsock for interactive with" default:"/tmp/next.sock"`
 
 	Host2 string `name:"host"`
-	Host  string `name:"[0]"`
+	Host  string `type:"[0]"`
 }
 
 func (c *Config) GetHostName() string {
@@ -39,6 +39,16 @@ func (c *Config) GetHostName() string {
 	return u.Host
 }
 
+func FixHost(host string) string {
+	if !strings.Contains(host, ":") {
+		host += ":11311"
+	}
+	if !strings.HasPrefix(host, "http") {
+		host = "http://" + host
+	}
+	return host
+}
+
 func (c *Config) FlaglyVerify() error {
 	if c.Host == "" {
 		c.Host = c.Host2
@@ -46,12 +56,8 @@ func (c *Config) FlaglyVerify() error {
 	if c.Host == "" {
 		return fmt.Errorf("host is empty")
 	}
-	if !strings.Contains(c.Host, ":") {
-		c.Host += ":11311"
-	}
-	if !strings.HasPrefix(c.Host, "http") {
-		c.Host = "http://" + c.Host
-	}
+	c.Host = FixHost(c.Host)
+
 	if c.AesKey == "" {
 		return fmt.Errorf("aeskey is required")
 	}

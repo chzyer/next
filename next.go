@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -18,6 +19,7 @@ type Next struct {
 	Server *server.Config `flagly:"handler"`
 	Client *client.Config `flagly:"handler"`
 	GenKey *NextGenKey    `flagly:"handler"`
+	Login  *NextLogin     `flagly:"handler"`
 	SysEnv *SysEnv        `flagly:"handler"`
 	Shell  *NextShell     `flagly:"handler"`
 }
@@ -94,4 +96,46 @@ func (s *SysEnv) FlaglyHandle(f *flow.Flow) error {
 
 func (s *SysEnv) FlaglyDesc() string {
 	return "enable ipforward and NAT, for linux"
+}
+
+// -----------------------------------------------------------------------------
+
+type NextLogin struct {
+	User   string
+	Key    string
+	Remote string `type:"[0]"`
+}
+
+func (l *NextLogin) FlaglyHandle(f *flow.Flow) error {
+	defer f.Close()
+	var err error
+
+	if l.Remote == "" {
+		return flagly.Error("remote host is required")
+	}
+
+	if l.Key == "" {
+		return flagly.Error("key can't be empty")
+	}
+
+	if l.User == "" {
+		l.User, err = readline.Line("username: ")
+		if err != nil {
+			return nil
+		}
+	}
+
+	pswd, err := readline.Password("password: ")
+	if err != nil {
+		return nil
+	}
+
+	cli := client.NewHTTP(client.FixHost(l.Remote), l.User, string(pswd), []byte(l.Key))
+	resp, err := cli.Login(nil)
+	if err != nil {
+		return err
+	}
+	ret, _ := json.MarshalIndent(resp, "", "\t")
+	println(string(ret))
+	return nil
 }

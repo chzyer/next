@@ -5,6 +5,9 @@ import (
 	"net/http"
 	"time"
 
+	"gopkg.in/logex.v1"
+
+	"github.com/chzyer/next/crypto"
 	"github.com/chzyer/next/ip"
 	"github.com/chzyer/next/uc"
 	"github.com/chzyer/next/util/clock"
@@ -70,7 +73,16 @@ func (h *HttpApi) reply(w http.ResponseWriter, obj interface{}) {
 	if err != nil {
 		panic(err)
 	}
-	w.Write(ret)
+	crypto.EncodeAes(ret, ret, h.cfg.AesKey, nil)
+
+	n, err := w.Write(ret)
+	if n != len(ret) {
+		logex.Errorf("short write: %v, want: %v", n, len(ret))
+		return
+	}
+	if err != nil {
+		logex.Error(err)
+	}
 }
 
 func (h *HttpApi) Run() error {

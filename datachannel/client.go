@@ -92,9 +92,7 @@ func (d *Client) loop() {
 			continue
 		}
 
-		d.mutex.Lock()
 		_, err := d.newDC(slotIdx)
-		d.mutex.Unlock()
 		if err != nil {
 			logex.Error(err, d.running)
 		}
@@ -182,31 +180,47 @@ func (d *Client) UpdateRemoteAddrs(ports []int) {
 	}
 }
 
-// inlock
-func (d *Client) newDC(idx int) (*DC, error) {
+func (d *Client) getSlot(idx int) dcSlot {
+	d.mutex.Lock()
+	defer d.mutex.Unlock()
+	return d.slots[idx]
+}
 
-	host := d.slots[idx].Addr
-	port := d.slots[idx].Port
-	endpoint := fmt.Sprintf("%v:%v", host, port)
-	dc, err := DialDC(endpoint, d.flow, d.session.Clone(port),
+func (d *Client) setSlot(idx int, f func(*dcSlot)) {
+	d.mutex.Lock()
+	defer d.mutex.Unlock()
+	f(&d.slots[idx])
+}
+
+func (d *Client) newDC(idx int) (*DC, error) {
+	slot := d.getSlot(idx)
+	endpoint := fmt.Sprintf("%v:%v", slot.Addr, slot.Port)
+	dc, err := DialDC(endpoint, d.flow, d.session.Clone(slot.Port),
 		d.onDataChannelExits(idx), d.in, d.out)
 	if err != nil {
-		d.slots[idx].backoffTime = time.Now().Add(10 * time.Second)
+		d.setSlot(idx, func(d *dcSlot) {
+			d.backoffTime = time.Now().Add(10 * time.Second)
+		})
 		return nil, logex.Trace(err)
 	}
 	atomic.AddInt32(&d.running, 1)
-	d.slots[idx].On = true
-	d.slots[idx].dc = dc
-	logex.Info("new datachannel to", host)
+
+	d.setSlot(idx, func(s *dcSlot) {
+		s.On = true
+		s.dc = dc
+	})
+
+	logex.Info("new datachannel to", slot.Addr)
 	return dc, nil
 }
 
 func (d *Client) GetStats() string {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
+
 	buf := bytes.NewBuffer(nil)
-	for idx := range d.slots {
-		dc := d.slots[idx].dc
+	for _, slot := range d.slots {
+		dc := slot.dc
 		if dc != nil {
 			buf.WriteString(dc.Name() + ": " + dc.GetStat().String() + "\n")
 		}
@@ -216,15 +230,15 @@ func (d *Client) GetStats() string {
 
 func (d *Client) onDataChannelExits(idx int) func() {
 	return func() {
-		d.mutex.Lock()
-		d.slots[idx].On = false
-		d.slots[idx].dc = nil
+		d.setSlot(idx, func(d *dcSlot) {
+			d.On = false
+			d.dc = nil
+		})
 		if atomic.AddInt32(&d.running, -1) == 0 {
 			if d.onAllBackoff != nil {
 				d.onAllBackoff()
 			}
 		}
-		d.mutex.Unlock()
 		select {
 		case d.kickFire <- struct{}{}:
 		default:

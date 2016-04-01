@@ -107,25 +107,3 @@ func (s *Shell) loop() {
 		go s.handleConn(conn)
 	}
 }
-
-type ShellCLI struct {
-	Help      *flagly.CmdHelp `flagly:"handler"`
-	Ping      *ShellPing      `flagly:"handler"`
-	HeartBeat *ShellHeartBeat `flagly:"handler"`
-	Route     *ShellRoute     `flagly:"handler"`
-}
-
-type ShellHeartBeat struct{}
-
-func (*ShellHeartBeat) FlaglyHandle(c *Client, rl *readline.Instance) error {
-	stat := c.dcs.GetStats()
-	fmt.Fprintln(rl, stat)
-	return nil
-}
-
-type ShellPing struct{}
-
-func (*ShellPing) FlaglyHandle(c *Client) error {
-	logex.Info(c)
-	return nil
-}
