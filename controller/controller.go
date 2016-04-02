@@ -36,6 +36,21 @@ func NewController(f *flow.Flow, toDC chan<- *packet.Packet, fromDC <-chan *pack
 	return ctl
 }
 
+type StageInfo struct {
+	ReqId    uint32
+	DataType packet.Type
+}
+
+func (c *Controller) ShowStage() []StageInfo {
+	c.stagingGruad.Lock()
+	defer c.stagingGruad.Unlock()
+	ret := make([]StageInfo, 0, len(c.staging))
+	for k, r := range c.staging {
+		ret = append(ret, StageInfo{k, r.Packet.Type})
+	}
+	return ret
+}
+
 func (c *Controller) GetOutChan() <-chan *packet.Packet {
 	return c.out
 }
