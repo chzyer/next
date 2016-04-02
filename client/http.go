@@ -68,7 +68,7 @@ func (h *HTTP) httpReq(ret interface{}, path string, data interface{}) error {
 
 func (c *HTTP) initClock() error {
 	var timestamp int64
-	if err := c.httpReq(&timestamp, "/time", nil); err != nil {
+	if err := c.httpReq(&timestamp, "/time/", nil); err != nil {
 		return err
 	}
 	c.clock = clock.NewByRemote(timestamp)
@@ -99,7 +99,7 @@ func (c *HTTP) doLogin(username string, password string) (*uc.AuthResponse, erro
 	req := uc.NewAuthRequest(
 		username, c.clock.Unix(), []byte(password), c.AesKey)
 	var ret uc.AuthResponse
-	if err := c.httpReq(&ret, "/auth", req); err != nil {
+	if err := c.httpReq(&ret, "/auth/", req); err != nil {
 		return nil, err
 	}
 	return &ret, nil

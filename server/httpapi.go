@@ -87,8 +87,8 @@ func (h *HttpApi) reply(w http.ResponseWriter, obj interface{}) {
 
 func (h *HttpApi) Run() error {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/auth", h.Auth)
-	mux.HandleFunc("/time", h.Time)
+	mux.HandleFunc("/auth/", h.Auth)
+	mux.HandleFunc("/time/", h.Time)
 	h.server.Handler = mux
 	return h.server.ListenAndServe()
 }
