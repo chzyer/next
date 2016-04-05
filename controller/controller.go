@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -16,39 +15,22 @@ type Controller struct {
 	toDC   chan<- *packet.Packet
 	fromDC <-chan *packet.Packet
 	reqId  uint32
-
-	staging      map[uint32]*Request
-	stagingGruad sync.Mutex
+	stage  *Stage
 }
 
 func NewController(f *flow.Flow, toDC chan<- *packet.Packet, fromDC <-chan *packet.Packet) *Controller {
 	ctl := &Controller{
-		in:      make(chan *Request, 8),
-		out:     make(chan *packet.Packet),
-		toDC:    toDC,
-		fromDC:  fromDC,
-		staging: make(map[uint32]*Request),
+		in:     make(chan *Request, 8),
+		out:    make(chan *packet.Packet),
+		toDC:   toDC,
+		fromDC: fromDC,
 	}
 	f.ForkTo(&ctl.flow, ctl.Close)
+	ctl.stage = newStage(ctl.flow)
 	go ctl.readLoop()
 	go ctl.writeLoop()
 	go ctl.resendLoop()
 	return ctl
-}
-
-type StageInfo struct {
-	ReqId    uint32
-	DataType packet.Type
-}
-
-func (c *Controller) ShowStage() []StageInfo {
-	c.stagingGruad.Lock()
-	defer c.stagingGruad.Unlock()
-	ret := make([]StageInfo, 0, len(c.staging))
-	for k, r := range c.staging {
-		ret = append(ret, StageInfo{k, r.Packet.Type})
-	}
-	return ret
 }
 
 func (c *Controller) GetOutChan() <-chan *packet.Packet {
@@ -117,17 +99,13 @@ loop:
 		case p := <-c.fromDC:
 			if p.Type.IsResp() {
 				// println("I got Reply:", p.IV.ReqId)
-				c.stagingGruad.Lock()
-				if staging := c.staging[p.IV.ReqId]; staging != nil {
-					if staging.Reply != nil {
-						select {
-						case staging.Reply <- p:
-						default:
-						}
+				req := c.stage.Remove(p.IV.ReqId)
+				if req != nil && req.Reply != nil {
+					select {
+					case req.Reply <- p:
+					default:
 					}
-					delete(c.staging, p.IV.ReqId)
 				}
-				c.stagingGruad.Unlock()
 			} else {
 				// println("I need Reply to:", p.IV.ReqId)
 				select {
@@ -157,17 +135,19 @@ loop:
 			break loop
 		case req := <-c.in:
 			// add to staging
-			c.stagingGruad.Lock()
 			if req.Packet.Type.IsReq() {
 				req.Packet.InitIV(c)
-				c.staging[req.Packet.IV.ReqId] = req
+				c.stage.Add(req)
 				// println("I add to stage: ",
 				//	req.Packet.IV.ReqId, req.Packet.Type.String())
 			} else {
 				// println("I reply to:", req.Packet.IV.ReqId)
 			}
 			c.toDC <- req.Packet
-			c.stagingGruad.Unlock()
 		}
 	}
+}
+
+func (c *Controller) ShowStage() []StageInfo {
+	return c.stage.ShowStage()
 }
