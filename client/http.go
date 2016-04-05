@@ -2,14 +2,12 @@ package client
 
 import (
 	"bytes"
-	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 
 	"gopkg.in/logex.v1"
 
-	"github.com/chzyer/next/crypto"
+	"github.com/chzyer/next/mchan"
 	"github.com/chzyer/next/uc"
 	"github.com/chzyer/next/util/clock"
 )
@@ -32,19 +30,8 @@ func NewHTTP(host, user, pswd string, aeskey []byte) *HTTP {
 }
 
 func (h *HTTP) httpReq(ret interface{}, path string, data interface{}) error {
-	var resp *http.Response
-	var err error
-	if data == nil {
-		resp, err = http.Get(h.Host + path)
-	} else {
-		var jsonBody []byte
-		jsonBody, err = json.Marshal(data)
-		if err != nil {
-			return err
-		}
-		body := bytes.NewReader(jsonBody)
-		resp, err = http.Post(h.Host+path, "application/json", body)
-	}
+	payload := mchan.Send(h.AesKey, path, data)
+	resp, err := http.Post(h.Host, "application/json", bytes.NewReader(payload))
 	if err != nil {
 		return err
 	}
@@ -52,23 +39,13 @@ func (h *HTTP) httpReq(ret interface{}, path string, data interface{}) error {
 	if err != nil {
 		return err
 	}
-	crypto.DecodeAes(body, body, h.AesKey, nil)
 
-	resp.Body.Close()
-	if resp.StatusCode/100 != 2 {
-		var err replyError
-		json.Unmarshal(body, &err)
-		return fmt.Errorf(err.Error)
-	}
-	if err := json.Unmarshal(body, ret); err != nil {
-		return err
-	}
-	return nil
+	return mchan.DecodeReply(h.AesKey, body, ret)
 }
 
 func (c *HTTP) initClock() error {
 	var timestamp int64
-	if err := c.httpReq(&timestamp, "/time/", nil); err != nil {
+	if err := c.httpReq(&timestamp, "/time", nil); err != nil {
 		return err
 	}
 	c.clock = clock.NewByRemote(timestamp)
@@ -99,7 +76,7 @@ func (c *HTTP) doLogin(username string, password string) (*uc.AuthResponse, erro
 	req := uc.NewAuthRequest(
 		username, c.clock.Unix(), []byte(password), c.AesKey)
 	var ret uc.AuthResponse
-	if err := c.httpReq(&ret, "/auth/", req); err != nil {
+	if err := c.httpReq(&ret, "/auth", req); err != nil {
 		return nil, err
 	}
 	return &ret, nil

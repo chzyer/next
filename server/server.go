@@ -7,6 +7,7 @@ import (
 	"github.com/chzyer/next/controller"
 	"github.com/chzyer/next/datachannel"
 	"github.com/chzyer/next/ip"
+	"github.com/chzyer/next/mchan"
 	"github.com/chzyer/next/packet"
 	"github.com/chzyer/next/uc"
 	"github.com/chzyer/next/util/clock"
@@ -60,8 +61,7 @@ func (s *Server) runShell() {
 }
 
 func (s *Server) runHttp() {
-	api := NewHttpApi(s.cfg.HTTP, s.uc, s.cl, &HttpApiConfig{
-		AesKey:   []byte(s.cfg.HTTPAes),
+	api := NewHttpApi(s.flow, s.cfg.HTTP, s.uc, s.cl, []byte(s.cfg.HTTPAes), &mchan.SvrConf{
 		CertFile: s.cfg.HTTPCert,
 		KeyFile:  s.cfg.HTTPKey,
 	}, s)
