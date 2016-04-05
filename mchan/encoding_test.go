@@ -23,6 +23,8 @@ func TestEncoding(t *testing.T) {
 			Info: "hello",
 		}
 		info := Reply(key, &a)
+		println(string(Reply(key, &a)))
+		println(string(Reply(key, &a)))
 
 		var a2 A
 		err := DecodeReply(key, info, &a2)

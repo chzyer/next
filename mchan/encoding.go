@@ -1,6 +1,7 @@
 package mchan
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 
@@ -8,6 +9,7 @@ import (
 )
 
 type ReplyInfo struct {
+	Token   []byte          `json:"token"`
 	Code    int             `json:"code,omitempty"`
 	Path    string          `json:"path,omitempty"`
 	Payload json.RawMessage `json:"payload"`
@@ -72,11 +74,19 @@ func Encode(key []byte, r *ReplyInfo) []byte {
 		raw, _ := json.Marshal(nil)
 		r.Payload = raw
 	}
+	if r.Token == nil {
+		length := 32
+		size := 128
+		if len(r.Payload) < size {
+			length = size - len(r.Payload)
+		}
+		r.Token = make([]byte, length)
+		rand.Read(r.Token)
+	}
 	ret, err := json.Marshal(r)
 	if err != nil {
 		panic(err)
 	}
-	println(string(ret))
 	crypto.EncodeAes(ret, ret, key, nil)
 	ret, _ = json.Marshal(cryptoReply{ret})
 	return ret
