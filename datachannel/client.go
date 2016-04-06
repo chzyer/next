@@ -94,6 +94,7 @@ func (d *Client) loop() {
 
 		_, err := d.newDC(slotIdx)
 		if err != nil {
+			time.Sleep(time.Second)
 			logex.Error(err, d.running)
 		}
 	}
