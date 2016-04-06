@@ -2,6 +2,7 @@ package mchan
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -59,22 +60,15 @@ func (s *Server) HandleFunc(path string, f HandlerFunc) {
 	s.router[path] = f
 }
 
-func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	body, err := ioutil.ReadAll(req.Body)
-	if err != nil {
-		logex.Error(err)
-		return
-	}
-
+func (s *Server) DecodeRequest(w http.ResponseWriter, body []byte) error {
 	reply, err := Decode(s.key, body)
 	if err != nil {
-		logex.Error(err)
-		return
+		return err
 	}
 	if f := s.router[reply.Path]; f != nil {
 		ret := f(&Req{reply.Payload})
 		if ret == nil {
-			return
+			return nil
 		}
 		switch t := ret.(type) {
 		case error:
@@ -82,7 +76,27 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		default:
 			w.Write(Reply(s.key, ret))
 		}
+		return nil
 	}
+	return fmt.Errorf("not found")
+}
+
+func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	body, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		logex.Error(err)
+		return
+	}
+	if err := s.DecodeRequest(w, body); err == nil {
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html")
+	w.Write([]byte(`<html>
+		<head><title>Hello World!</title></head>
+		<body><h1>Hello</h1></body>
+	</html>
+`))
 }
 
 func (s *Server) Run() error {
