@@ -1,8 +1,7 @@
 package server
 
 import (
-	"encoding/json"
-
+	"github.com/chzyer/next/mchan"
 	"github.com/chzyer/next/uc"
 
 	"gopkg.in/logex.v1"
@@ -12,9 +11,9 @@ var (
 	ErrWrongUserPassword = logex.Define("wrong username or password")
 )
 
-func (h *HttpApi) Auth(pl []byte) interface{} {
+func (h *HttpApi) Auth(req *mchan.Req) interface{} {
 	var authReq *uc.AuthRequest
-	if err := json.Unmarshal(pl, &authReq); err != nil {
+	if err := req.Unmarshal(&authReq); err != nil {
 		return err
 	}
 
@@ -43,6 +42,6 @@ func (h *HttpApi) Auth(pl []byte) interface{} {
 	}
 }
 
-func (h *HttpApi) Time(pl []byte) interface{} {
+func (h *HttpApi) Time(req *mchan.Req) interface{} {
 	return h.clock.Unix()
 }

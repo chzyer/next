@@ -75,13 +75,11 @@ func Encode(key []byte, r *ReplyInfo) []byte {
 		r.Payload = raw
 	}
 	if r.Token == nil {
-		length := 32
-		size := 128
-		if len(r.Payload) < size {
-			length = size - len(r.Payload)
+		length := 128 - len(r.Payload)
+		if length > 0 {
+			r.Token = make([]byte, length)
+			rand.Read(r.Token)
 		}
-		r.Token = make([]byte, length)
-		rand.Read(r.Token)
 	}
 	ret, err := json.Marshal(r)
 	if err != nil {
@@ -93,6 +91,7 @@ func Encode(key []byte, r *ReplyInfo) []byte {
 }
 
 func Decode(key, data []byte) (*ReplyInfo, error) {
+	println(len(data))
 	var creply cryptoReply
 	err := json.Unmarshal(data, &creply)
 	if err != nil {

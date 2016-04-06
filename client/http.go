@@ -58,6 +58,10 @@ func (c *HTTP) Login(onLogin func(*uc.AuthResponse) error) (*uc.AuthResponse, er
 		return nil, logex.Trace(err)
 	}
 
+	if err := c.initClock(); err != nil {
+		return nil, logex.Trace(err)
+	}
+
 	ret, err := c.doLogin(c.User, c.Pswd)
 	if err != nil {
 		return nil, logex.Trace(err)

@@ -53,7 +53,7 @@ func (r *Req) Unmarshal(obj interface{}) error {
 	return json.Unmarshal(r.payload, obj)
 }
 
-type HandlerFunc func(payload []byte) interface{}
+type HandlerFunc func(*Req) interface{}
 
 func (s *Server) HandleFunc(path string, f HandlerFunc) {
 	s.router[path] = f
@@ -72,7 +72,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if f := s.router[reply.Path]; f != nil {
-		ret := f(reply.Payload)
+		ret := f(&Req{reply.Payload})
 		if ret == nil {
 			return
 		}
