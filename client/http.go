@@ -2,13 +2,16 @@ package client
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"net/http"
+	"time"
 
 	"gopkg.in/logex.v1"
 
 	"github.com/chzyer/next/mchan"
 	"github.com/chzyer/next/uc"
+	"github.com/chzyer/next/util"
 	"github.com/chzyer/next/util/clock"
 )
 
@@ -31,7 +34,8 @@ func NewHTTP(host, user, pswd string, aeskey []byte) *HTTP {
 
 func (h *HTTP) httpReq(ret interface{}, path string, data interface{}) error {
 	payload := mchan.Send(h.AesKey, path, data)
-	resp, err := http.Post(h.Host, "application/json", bytes.NewReader(payload))
+	fakePath := fmt.Sprintf("%v/%v?%v", util.RandStr(5), util.RandStr(4), time.Now().UnixNano())
+	resp, err := http.Post(h.Host+"/"+fakePath, "application/json", bytes.NewReader(payload))
 	if err != nil {
 		return err
 	}

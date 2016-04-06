@@ -34,6 +34,7 @@ func NewServer(f *flow.Flow, listen string, ct *clock.Clock, key []byte, cfg *Sv
 		WriteTimeout:   10 * time.Second,
 		MaxHeaderBytes: 1 << 10,
 	}
+	httpserver.SetKeepAlivesEnabled(false)
 	svr := &Server{
 		flow:   f,
 		cfg:    cfg,
