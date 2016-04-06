@@ -3,6 +3,7 @@ package packet
 import (
 	"container/list"
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/chzyer/flow"
@@ -38,10 +39,11 @@ func (s *HeartBeatStatInfo) Add(s2 *HeartBeatStatInfo) {
 }
 
 type HeartBeatStat struct {
-	start    time.Time
-	lastTime int
-	slots    [90]HeartBeatStatInfo // 15 mintue, 10s one item
-	size     int
+	start      time.Time
+	lastTime   int                   // the time of lastest slot
+	slots      [90]HeartBeatStatInfo // 15 mintue, 10s one item
+	lastCommit int64
+	size       int
 }
 
 func (s *HeartBeatStat) getMin(n int) *HeartBeatStatInfo {
@@ -77,7 +79,7 @@ func (s *HeartBeatStat) getSlot() *HeartBeatStatInfo {
 	return &s.slots[0]
 }
 
-func (s *HeartBeatStat) needClean() error {
+func (s *HeartBeatStat) isNeedClean() error {
 	stat := s.getMin(1)
 	if stat.count > 10 {
 		if stat.droped >= stat.count/2 {
@@ -98,13 +100,14 @@ func (s *HeartBeatStat) needClean() error {
 
 func (s *HeartBeatStat) submitDrop(n int) {
 	slot := s.getSlot()
+	atomic.StoreInt64(&s.lastCommit, time.Now().Unix())
 	slot.droped += int64(n)
 	slot.count++
 }
 
 func (s *HeartBeatStat) submitDuration(d time.Duration) {
 	slot := s.getSlot()
-
+	atomic.StoreInt64(&s.lastCommit, time.Now().Unix())
 	slot.total += d
 	slot.count++
 }
@@ -188,7 +191,7 @@ func (h *HeartBeatStage) GetStat() *HeartBeatStat {
 }
 
 func (h *HeartBeatStage) tryClean() bool {
-	if err := h.stat.needClean(); err != nil {
+	if err := h.stat.isNeedClean(); err != nil {
 		h.clean(err)
 		return true
 	}
@@ -200,7 +203,7 @@ func (h *HeartBeatStage) item(elem *list.Element) heartBeatItem {
 }
 
 func (h *HeartBeatStage) loop() {
-	ticker := time.NewTicker(10 * time.Second)
+	ticker := time.NewTicker(h.timeout)
 	defer ticker.Stop()
 loop:
 	for {
@@ -209,6 +212,13 @@ loop:
 			break loop
 		case <-ticker.C:
 			h.findElem(0) // just clean up
+			lastCommit := atomic.LoadInt64(&h.stat.lastCommit)
+			duration := time.Duration(time.Now().Unix()-lastCommit) * time.Second
+			if duration > 5*time.Second {
+				rtt := h.GetStat().getMin(1).rtt()
+				h.clean(fmt.Errorf("more than 5 second not response, current: %v", rtt))
+				break loop
+			}
 		case iv := <-h.receiveChan:
 			elem := h.findElem(iv.ReqId)
 			if elem == nil {

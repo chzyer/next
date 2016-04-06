@@ -58,6 +58,7 @@ loop:
 	for {
 		p, err := packet.Read(d.session, buf)
 		if err != nil {
+			logex.Error(d.Name(), "read error:", err)
 			break
 		}
 		switch p.Type {
