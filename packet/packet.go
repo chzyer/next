@@ -1,6 +1,7 @@
 package packet
 
 import (
+	"crypto/rand"
 	"encoding/binary"
 	"io"
 	"math"
@@ -95,8 +96,9 @@ func (p *Packet) Marshal(s *SessionIV) []byte {
 	// 1. iv [0:16]
 	// 2. crc32(payload+type) [16:20]
 	// 3. aes(crc32(payload+type), token, iv) [20: 24]
-	// 4. len(payload+type) [24: 26]
-	// 5. aes(payload+type, token, iv) [26:]
+	// 4. len(n+rand(n)) + payload + type) [24: 26]
+	// 5. aes( (n+rand(n)) + payload + type, token, iv) [26:]
+	//     n ~ [32,128]
 	if p.IV == nil {
 		switch p.Type {
 		case AUTH, AUTH_R, HEARTBEAT, HEARTBEAT_R:
@@ -109,22 +111,42 @@ func (p *Packet) Marshal(s *SessionIV) []byte {
 
 	bodyLength := len(p.Payload) + 1
 	totalLength := 26 + bodyLength
-	buffer := make([]byte, totalLength)
+	// make fixed length
+	randLength := 256
+	if totalLength > randLength {
+		if totalLength < 1500 {
+			randLength = 32
+		} else {
+			randLength = 0
+		}
+	} else {
+		randLength -= totalLength
+	}
+	buffer := make([]byte, 2+randLength+totalLength)
+
+	// 5.3, n + rand(n), 26 = header
+	randBuffer := buffer[26 : 26+2+randLength]
+	binary.BigEndian.PutUint16(randBuffer, uint16(randLength))
+	rand.Read(randBuffer[2:])
 
 	// 5.2, fill payload and type
 	copy(buffer[len(buffer)-1:], p.Type.Bytes())
-	body := buffer[len(buffer)-1-len(p.Payload):]
-	copy(body, p.Payload)
+	body := buffer[26:]
+	copy(body[2+randLength:], p.Payload)
+
 	checksum := crypto.Crc32(body)
+
 	// 5.1, aes-256-cfb
 	s.Encode(p.IV, body, body)
+
 	// 4, length, we already make sure bodyLength will not overflowed
-	binary.BigEndian.PutUint16(buffer[24:26], uint16(bodyLength))
+	binary.BigEndian.PutUint16(buffer[24:26], uint16(bodyLength+2+randLength))
 	// 2-3, checksum, aes(checksum)
 	binary.BigEndian.PutUint32(buffer[16:20], checksum)
 	s.Encode(p.IV, buffer[20:24], buffer[16:20])
 	// 1, iv
 	copy(buffer[:16], p.IV.Data)
+
 	return buffer
 }
 
@@ -149,10 +171,10 @@ func ReadWithIV(s *SessionIV, iv *IV, r io.Reader) (*Packet, error) {
 
 	checksum := binary.BigEndian.Uint32(header[0:4])
 	aesCS := header[4:8]
-	length := binary.BigEndian.Uint16(header[8:10])
+	length := binary.BigEndian.Uint16(header[8:10]) // n + rand(n) + bodyLength
 
 	// at least we have `type`
-	if length < 1 || length > uint16(MaxPayloadLength) {
+	if length < 1+2 || length > uint16(MaxPayloadLength) {
 		return nil, ErrInvalidLength.Trace(length)
 	}
 
@@ -174,8 +196,11 @@ func ReadWithIV(s *SessionIV, iv *IV, r io.Reader) (*Packet, error) {
 		return nil, ErrInvalidToken.Trace("crc:", crypto.Crc32(aesBody), checksum)
 	}
 
+	randN := binary.BigEndian.Uint16(aesBody[:2])
+	payloadOffset := 2 + int(randN)
+
 	var t Type
-	payload := aesBody[:len(aesBody)-1]
+	payload := aesBody[payloadOffset : len(aesBody)-1]
 	if err := t.Marshal(aesBody[len(aesBody)-1:]); err != nil {
 		return nil, logex.Trace(err)
 	}
