@@ -214,9 +214,9 @@ loop:
 			h.findElem(0) // just clean up
 			lastCommit := atomic.LoadInt64(&h.stat.lastCommit)
 			duration := time.Duration(time.Now().Unix()-lastCommit) * time.Second
-			if duration > 5*time.Second {
+			if duration > 10*time.Second {
 				rtt := h.GetStat().getMin(1).rtt()
-				h.clean(fmt.Errorf("more than 5 second not response, current: %v", rtt))
+				h.clean(fmt.Errorf("more than 10 second not response, current: %v", rtt))
 				break loop
 			}
 		case iv := <-h.receiveChan:
