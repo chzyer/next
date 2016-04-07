@@ -35,8 +35,16 @@ func NewShell(svr *Server, sock string) (*Shell, error) {
 func (s *Shell) handleConn(conn net.Conn) {
 	defer conn.Close()
 
+	sh := &ShellCLI{}
+	fset, err := flagly.Compile("", sh)
+	if err != nil {
+		logex.Info(err)
+		return
+	}
+
 	cfg := readline.Config{
-		Prompt: " -> ",
+		Prompt:       " -> ",
+		AutoComplete: &readline.SegmentComplete{fset.Completer()},
 	}
 	rl, err := readline.HandleConn(cfg, conn)
 	if err != nil {
@@ -44,14 +52,7 @@ func (s *Shell) handleConn(conn net.Conn) {
 	}
 	defer rl.Close()
 
-	sh := &ShellCLI{}
-	fset, err := flagly.Compile("", sh)
-	if err != nil {
-		logex.Info(err)
-		return
-	}
 	fset.Context(rl, s.svr)
-
 	io.WriteString(rl, "Next Server CLI\n")
 	for {
 		command, err := rl.Readline()
@@ -93,6 +94,24 @@ func (s *Shell) Close() {
 }
 
 type ShellCLI struct {
-	Help flagly.CmdHelp `flagly:"handler"`
-	User ShellUser      `flagly:"handler"`
+	Help  flagly.CmdHelp `flagly:"handler"`
+	User  ShellUser      `flagly:"handler"`
+	Debug *ShellDebug    `flagly:"handler"`
+}
+
+type ShellDebug struct {
+	Level int `default:"-1" desc:"0: Debug, 1: Info, 2: Warn, 3: Error"`
+}
+
+func (s ShellDebug) FlaglyHandle(rl *readline.Instance) error {
+	if s.Level == -1 {
+		fmt.Fprintln(rl, "current log level:", logex.DebugLevel)
+		return nil
+	}
+	if s.Level > 3 {
+		return flagly.Error(fmt.Sprintf("invalid level: %v", s.Level))
+	}
+	logex.DebugLevel = s.Level
+	fmt.Fprintln(rl, "log level set to", logex.DebugLevel)
+	return nil
 }

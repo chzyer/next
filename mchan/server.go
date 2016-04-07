@@ -64,6 +64,7 @@ func (s *Server) HandleFunc(path string, f HandlerFunc) {
 func (s *Server) write(w http.ResponseWriter, data []byte) {
 	w.Header().Set("Content-Length", fmt.Sprintf("%v", len(data)))
 	n, err := w.Write(data)
+	logex.Debugf("write %v bytes", n)
 	if n != len(data) {
 		logex.Error("short write: %v, %v", n, len(data))
 		return
@@ -81,6 +82,7 @@ func (s *Server) DecodeRequest(w http.ResponseWriter, body []byte) error {
 	}
 	if f := s.router[reply.Path]; f != nil {
 		ret := f(&Req{reply.Payload})
+		logex.Debug("got reply:", ret)
 		if ret == nil {
 			return nil
 		}

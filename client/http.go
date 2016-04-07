@@ -70,6 +70,7 @@ func (c *HTTP) Login(onLogin func(*uc.AuthResponse) error) (*uc.AuthResponse, er
 		time.Sleep(time.Second)
 		return c.Login(onLogin)
 	}
+	logex.Pretty(ret)
 
 	if onLogin != nil {
 		if err := onLogin(ret); err != nil {
