@@ -91,6 +91,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if err := s.DecodeRequest(w, body); err == nil {
 		return
 	}
+	logex.Warn("invalid request from:", req.RemoteAddr)
 
 	w.Header().Set("Content-Type", "text/html")
 	w.Write([]byte(`<html>
