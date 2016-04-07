@@ -93,6 +93,7 @@ func (c *Client) initTun(remoteCfg *uc.AuthResponse) (in, out chan []byte, err e
 }
 
 func (c *Client) onLogin(a *uc.AuthResponse) error {
+	logex.Pretty(a)
 	err := c.initDataChannel(a)
 	if err != nil {
 		return logex.Trace(err)
