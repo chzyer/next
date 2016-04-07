@@ -76,7 +76,7 @@ func Encode(key []byte, r *ReplyInfo) []byte {
 	}
 	if r.Token == nil {
 		raw, _ := json.Marshal(r)
-		length := 256 - len(raw)
+		length := 1024 - len(raw)
 		if length > 0 {
 			r.Token = make([]byte, length)
 			rand.Read(r.Token)
