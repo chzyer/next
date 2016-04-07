@@ -4,6 +4,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"gopkg.in/logex.v1"
+
 	"github.com/chzyer/flow"
 	"github.com/chzyer/next/packet"
 )
@@ -50,8 +52,9 @@ func (c *Controller) WriteChan() chan *Request {
 }
 
 type Request struct {
-	Packet *packet.Packet
-	Reply  chan *packet.Packet
+	Packet  *packet.Packet
+	Reply   chan *packet.Packet
+	Timeout time.Duration
 }
 
 func NewRequest(p *packet.Packet, reply bool) *Request {
@@ -63,6 +66,10 @@ func NewRequest(p *packet.Packet, reply bool) *Request {
 }
 
 func (c *Controller) send(req *Request) *packet.Packet {
+	var timeout <-chan time.Time
+	if req.Timeout > 0 {
+		timeout = time.After(req.Timeout)
+	}
 	select {
 	case c.in <- req:
 		if req.Reply != nil {
@@ -72,6 +79,8 @@ func (c *Controller) send(req *Request) *packet.Packet {
 			case <-c.flow.IsClose():
 			}
 		}
+	case <-timeout:
+		logex.Warn("send timeout: ", req.Packet.Type.String())
 	case <-c.flow.IsClose():
 	}
 	return nil
@@ -82,6 +91,10 @@ func (c *Controller) Request(req *packet.Packet) *packet.Packet {
 		Packet: req,
 		Reply:  make(chan *packet.Packet),
 	})
+}
+
+func (c *Controller) SendTimeout(req *packet.Packet, timeout time.Duration) {
+	c.send(&Request{Packet: req, Timeout: timeout})
 }
 
 func (c *Controller) Send(req *packet.Packet) {

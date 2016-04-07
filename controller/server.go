@@ -2,6 +2,7 @@ package controller
 
 import (
 	"encoding/json"
+	"time"
 
 	"github.com/chzyer/flow"
 	"github.com/chzyer/next/packet"
@@ -33,7 +34,7 @@ func (s *Server) NotifyDataChannel(port []int) {
 	if err != nil {
 		panic(err)
 	}
-	s.Send(packet.New(ret, packet.NEWDC))
+	s.SendTimeout(packet.New(ret, packet.NEWDC), 3*time.Second)
 }
 
 func (s *Server) loop() {
