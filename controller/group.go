@@ -54,6 +54,7 @@ loop:
 }
 
 func (c *Group) UserLogin(u *uc.User) *Server {
+	logex.Debug("controller.onUserLogin")
 	c.mutex.Lock()
 	controller, ok := c.online[u.Id]
 	if !ok {
@@ -63,6 +64,8 @@ func (c *Group) UserLogin(u *uc.User) *Server {
 		controller.UserRelogin(u)
 	}
 	c.mutex.Unlock()
+	logex.Debug("controller.onUserLogin.notify")
 	controller.NotifyDataChannel(c.delegate.GetAllDataChannel())
+	logex.Debug("controller.onUserLogin.done")
 	return controller
 }

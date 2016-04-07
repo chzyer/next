@@ -111,8 +111,10 @@ func (s *Server) OnNewUser(userId int) {
 		logex.Error("on new user but user is not exists!", userId)
 		return
 	}
-	logex.Infof("new user is coming: Id: %v, Name: %v", u.Id, u.Name)
+	logex.Debug("notify controller new user is logined")
 	s.controllerGroup.UserLogin(u)
+
+	logex.Infof("new user is coming: Id: %v, Name: %v", u.Id, u.Name)
 }
 
 // controller -> user -> datachannel
