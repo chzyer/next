@@ -30,9 +30,8 @@ func (h *HttpApi) Auth(req *mchan.Req) interface{} {
 		u.Net = h.delegate.AllocIP()
 	}
 
-	h.delegate.OnNewUser(int(u.Id))
-
-	return &uc.AuthResponse{
+	logex.Info("login success, fetching datachannel")
+	auth := &uc.AuthResponse{
 		Gateway:     h.delegate.GetGateway().String(),
 		UserId:      int(u.Id),
 		INet:        u.Net.String(),
@@ -40,6 +39,8 @@ func (h *HttpApi) Auth(req *mchan.Req) interface{} {
 		Token:       u.Token,
 		DataChannel: h.delegate.GetDataChannel(),
 	}
+	h.delegate.OnNewUser(int(u.Id))
+	return auth
 }
 
 func (h *HttpApi) Time(req *mchan.Req) interface{} {

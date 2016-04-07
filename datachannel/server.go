@@ -80,6 +80,8 @@ func (m *Server) removeListener(idx int) {
 }
 
 func (m *Server) findNewSlot() int {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
 	for idx, ln := range m.listeners {
 		if ln == nil {
 			return idx
@@ -90,9 +92,6 @@ func (m *Server) findNewSlot() int {
 }
 
 func (m *Server) AddChannelListener() error {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
-
 	idx := m.findNewSlot()
 	ln, err := NewListener(m.flow, m.delegate, func() {
 		m.removeListener(idx)
@@ -100,7 +99,10 @@ func (m *Server) AddChannelListener() error {
 	if err != nil {
 		return logex.Trace(err)
 	}
+
+	m.mutex.Lock()
 	m.listeners[idx] = ln
+	m.mutex.Unlock()
 
 	go ln.Serve()
 	return nil
