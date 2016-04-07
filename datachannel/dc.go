@@ -131,6 +131,8 @@ func (d *DC) Name() string {
 func (d *DC) Close() {
 	if d.exitError != nil {
 		logex.Info(d.Name(), "closed by:", d.exitError)
+	} else {
+		logex.Info(d.Name(), "closed manually")
 	}
 	d.conn.Close()
 	d.flow.Close()
