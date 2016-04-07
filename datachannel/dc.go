@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/chzyer/flow"
@@ -58,7 +59,9 @@ loop:
 	for {
 		p, err := packet.Read(d.session, buf)
 		if err != nil {
-			logex.Error(d.Name(), "read error:", err)
+			if !strings.Contains(err.Error(), "closed") {
+				logex.Error(d.Name(), "read error:", err)
+			}
 			break
 		}
 		switch p.Type {

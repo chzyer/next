@@ -1,15 +1,15 @@
 package mchan
 
 import (
-	"crypto/rand"
 	"encoding/json"
 	"fmt"
 
 	"github.com/chzyer/next/crypto"
+	"github.com/chzyer/next/util"
 )
 
 type ReplyInfo struct {
-	Token   []byte          `json:"token"`
+	Token   string          `json:"token"`
 	Code    int             `json:"code,omitempty"`
 	Path    string          `json:"path,omitempty"`
 	Payload json.RawMessage `json:"payload"`
@@ -74,12 +74,11 @@ func Encode(key []byte, r *ReplyInfo) []byte {
 		raw, _ := json.Marshal(nil)
 		r.Payload = raw
 	}
-	if r.Token == nil {
+	if r.Token == "" {
 		raw, _ := json.Marshal(r)
 		length := 1024 - len(raw)
 		if length > 0 {
-			r.Token = make([]byte, length)
-			rand.Read(r.Token)
+			r.Token = util.RandStr(length)
 		}
 	}
 	ret, err := json.Marshal(r)
