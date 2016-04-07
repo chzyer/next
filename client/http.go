@@ -66,6 +66,10 @@ func (c *HTTP) Login(onLogin func(*uc.AuthResponse) error) (*uc.AuthResponse, er
 	if err != nil {
 		return nil, logex.Trace(err)
 	}
+	if ret.DataChannel == -1 {
+		time.Sleep(time.Second)
+		return c.Login(onLogin)
+	}
 
 	if onLogin != nil {
 		if err := onLogin(ret); err != nil {

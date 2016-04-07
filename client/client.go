@@ -57,12 +57,18 @@ func (c *Client) initDataChannel(remoteCfg *uc.AuthResponse) (err error) {
 		session, c.dcIn, c.dcOut)
 
 	dcs.SetOnAllChannelsBackoff(func() {
+		logex.Info("all channels backoff")
 		dcs.Close()
 		for {
 			resp, err := c.HTTP.Login(c.onLogin)
 			if err != nil {
 				logex.Error(err)
-				time.Sleep(2 * time.Second)
+				select {
+				case <-time.After(2 * time.Second):
+					continue
+				case <-c.flow.IsClose():
+					return
+				}
 				continue
 			}
 			*remoteCfg = *resp

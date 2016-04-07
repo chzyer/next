@@ -78,7 +78,8 @@ func (d *Client) SetOnAllChannelsBackoff(f func()) {
 }
 
 func (d *Client) loop() {
-	for {
+loop:
+	for !d.flow.IsClosed() {
 		d.mutex.Lock()
 		slotIdx, wait := d.findOff()
 		d.mutex.Unlock()
@@ -94,8 +95,12 @@ func (d *Client) loop() {
 
 		_, err := d.newDC(slotIdx)
 		if err != nil {
-			time.Sleep(time.Second)
-			logex.Error(err, d.running)
+			select {
+			case <-d.flow.IsClose():
+				break loop
+			case <-time.After(time.Second):
+				logex.Error(err, d.running)
+			}
 		}
 	}
 }
