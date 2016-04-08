@@ -16,6 +16,7 @@ type ShellCLI struct {
 	Route      *ShellRoute      `flagly:"handler"`
 	Dig        *ShellDig        `flagly:"handler"`
 	Controller *ShellController `flagly:"handler"`
+	Debug      *ShellDebug      `flagly:"handler"`
 }
 
 type ShellDig struct {

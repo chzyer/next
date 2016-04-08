@@ -98,20 +98,3 @@ type ShellCLI struct {
 	User  ShellUser      `flagly:"handler"`
 	Debug *ShellDebug    `flagly:"handler"`
 }
-
-type ShellDebug struct {
-	Level int `default:"-1" desc:"0: Debug, 1: Info, 2: Warn, 3: Error"`
-}
-
-func (s ShellDebug) FlaglyHandle(rl *readline.Instance) error {
-	if s.Level == -1 {
-		fmt.Fprintln(rl, "current log level:", logex.DebugLevel)
-		return nil
-	}
-	if s.Level > 3 {
-		return flagly.Error(fmt.Sprintf("invalid level: %v", s.Level))
-	}
-	logex.DebugLevel = s.Level
-	fmt.Fprintln(rl, "log level set to", logex.DebugLevel)
-	return nil
-}
