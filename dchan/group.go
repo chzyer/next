@@ -43,6 +43,37 @@ func NewGroup(f *flow.Flow) *Group {
 	return g
 }
 
+func (g *Group) findChannel(f func(*Channel) bool) *Channel {
+	var ret *Channel
+	g.chanListGuard.RLock()
+	for elem := g.chanList.Front(); elem != nil; elem = elem.Next() {
+		if f(elem.Value.(*Channel)) {
+			ret = elem.Value.(*Channel)
+			break
+		}
+	}
+	g.chanListGuard.RUnlock()
+	return ret
+}
+
+func (g *Group) CloseChannel(src, dst string) error {
+	ch := g.findChannel(func(c *Channel) bool {
+		return c.Src().String() == src && c.Dst().String() == dst
+	})
+	if ch == nil {
+		return fmt.Errorf("channel is not found")
+	}
+	ch.Close()
+	return nil
+}
+
+func (g *Group) ChannelCount() int {
+	g.chanListGuard.RLock()
+	count := g.chanList.Len()
+	g.chanListGuard.RUnlock()
+	return count
+}
+
 func (g *Group) GetUsefulChan() []*Channel {
 	g.chanListGuard.RLock()
 	defer g.chanListGuard.RUnlock()

@@ -29,15 +29,18 @@ type Client struct {
 	dcCli *dchan.Client
 	dcIn  chan *packet.Packet
 	dcOut chan *packet.Packet
+
+	needLoginChan chan struct{}
 }
 
 func New(cfg *Config, f *flow.Flow) *Client {
 	cli := &Client{
-		cfg:   cfg,
-		flow:  f,
-		dcIn:  make(chan *packet.Packet),
-		dcOut: make(chan *packet.Packet),
-		HTTP:  NewHTTP(cfg.Host, cfg.UserName, cfg.Password, []byte(cfg.AesKey)),
+		cfg:           cfg,
+		flow:          f,
+		dcIn:          make(chan *packet.Packet),
+		dcOut:         make(chan *packet.Packet),
+		HTTP:          NewHTTP(cfg.Host, cfg.UserName, cfg.Password, []byte(cfg.AesKey)),
+		needLoginChan: make(chan struct{}, 1),
 	}
 	http.DefaultClient.Timeout = 5 * time.Second
 	return cli
@@ -47,6 +50,30 @@ func (c *Client) Close() {
 	c.flow.Close()
 }
 
+func (c *Client) reloginLoop() {
+	c.flow.Add(1)
+	defer c.flow.DoneAndClose()
+
+loop:
+	for {
+		select {
+		case <-c.needLoginChan:
+		resend:
+			if err := c.HTTP.Login(c.onLogin); err != nil {
+				logex.Error(err)
+				switch c.flow.CloseOrWait(time.Second) {
+				case flow.F_TIMEOUT:
+					goto resend
+				case flow.F_CLOSED:
+					break loop
+				}
+			}
+		case <-c.flow.IsClose():
+			break loop
+		}
+	}
+}
+
 func (c *Client) initDataChannel(remoteCfg *uc.AuthResponse) (err error) {
 	port := remoteCfg.DataChannel
 	session := packet.NewSessionIV(
@@ -54,29 +81,16 @@ func (c *Client) initDataChannel(remoteCfg *uc.AuthResponse) (err error) {
 
 	dcCli := dchan.NewClient(c.flow, session, c.dcIn, c.dcOut)
 	dcCli.AddHost(c.cfg.GetHostName(), port)
+	dcCli.SetOnAllBackoff(func() {
+		logex.Info("all dchan is backoff")
+		dcCli.Close()
+		select {
+		case c.needLoginChan <- struct{}{}:
+		default:
+		}
+	})
 	c.dcCli = dcCli
 	dcCli.Run()
-
-	_ = func() {
-		logex.Info("all channels backoff")
-		// dcs.Close()
-		for {
-			resp, err := c.HTTP.Login(c.onLogin)
-			if err != nil {
-				logex.Error(err)
-				select {
-				case <-time.After(2 * time.Second):
-					continue
-				case <-c.flow.IsClose():
-					return
-				}
-				continue
-			}
-			*remoteCfg = *resp
-			break
-		}
-	}
-
 	return nil
 }
 
@@ -92,19 +106,50 @@ func (c *Client) initTun(remoteCfg *uc.AuthResponse) (in, out chan []byte, err e
 	return in, out, nil
 }
 
-func (c *Client) onLogin(a *uc.AuthResponse) error {
-	logex.Pretty(a)
-	err := c.initDataChannel(a)
+func (c *Client) onLogin(remoteCfg *uc.AuthResponse) error {
+	logex.Pretty(remoteCfg)
+
+	err := c.initDataChannel(remoteCfg)
 	if err != nil {
 		return logex.Trace(err)
 	}
+
 	if c.tun != nil {
-		c.tun.ConfigUpdate(a)
+		c.tun.ConfigUpdate(remoteCfg)
+		return nil
 	}
+
+	tunIn, tunOut, err := c.initTun(remoteCfg)
+	if err != nil {
+		return logex.Trace(err)
+	}
+
+	if err := c.initController(c.dcIn, c.dcOut, tunIn); err != nil {
+		return logex.Trace(err)
+	}
+
+	c.initRouteTable()
+	go c.tunToControllerLoop(tunOut)
+
 	return nil
 }
 
-func (c *Client) initRoute() {
+func (c *Client) tunToControllerLoop(tunOut <-chan []byte) {
+	c.flow.Add(1)
+	defer c.flow.DoneAndClose()
+loop:
+	for {
+		select {
+		case <-c.flow.IsClose():
+			break loop
+		case data := <-tunOut:
+			p := packet.New(data, packet.DATA)
+			c.ctl.Send(p)
+		}
+	}
+}
+
+func (c *Client) initRouteTable() {
 	c.route = route.NewRoute(c.flow, c.tun.Name())
 	if err := c.route.Load(c.cfg.RouteFile); err != nil {
 		logex.Error(err)
@@ -117,45 +162,17 @@ func (c *Client) initController(toDC chan<- *packet.Packet, fromDC <-chan *packe
 }
 
 func (c *Client) Run() {
-	remoteCfg, err := c.HTTP.Login(c.onLogin)
-	if err != nil {
-		c.flow.Error(err)
-		return
-	}
-
-	tunIn, tunOut, err := c.initTun(remoteCfg)
-	if err != nil {
-		c.flow.Error(err)
-		return
-	}
-
-	c.initRoute()
-
 	if err := c.runShell(); err != nil {
 		c.flow.Error(err)
 		return
 	}
 
-	if err := c.initController(c.dcIn, c.dcOut, tunIn); err != nil {
+	if err := c.HTTP.Login(c.onLogin); err != nil {
 		c.flow.Error(err)
 		return
 	}
 
-	go func() {
-	loop:
-		for {
-			select {
-			case <-c.flow.IsClose():
-				break loop
-			case data := <-tunOut:
-				p := packet.New(data, packet.DATA)
-				c.ctl.Send(p)
-			}
-		}
-	}()
-
-	println("ok")
-
+	go c.reloginLoop()
 }
 
 func (c *Client) runShell() error {
@@ -173,4 +190,8 @@ func (c *Client) runShell() error {
 // controller
 func (c *Client) OnNewDC(ports []int) {
 	c.dcCli.UpdateRemoteAddrs(c.cfg.GetHostName(), ports)
+}
+
+func (c *Client) SaveRoute() error {
+	return c.route.Save(c.cfg.RouteFile)
 }

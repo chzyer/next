@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/chzyer/flow"
@@ -23,15 +24,17 @@ type Slot struct {
 }
 
 type Client struct {
-	flow    *flow.Flow
-	group   *Group
-	session *packet.SessionIV
-	mutex   sync.Mutex
+	flow         *flow.Flow
+	group        *Group
+	session      *packet.SessionIV
+	mutex        sync.Mutex
+	runningChans int32
 
-	ports       []int
-	toDC        <-chan *packet.Packet
-	fromDC      chan<- *packet.Packet
-	connectChan chan Slot
+	ports        []int
+	toDC         <-chan *packet.Packet
+	fromDC       chan<- *packet.Packet
+	connectChan  chan Slot
+	onAllBackoff func()
 }
 
 // out is which datachannel can write for
@@ -51,6 +54,10 @@ func NewClient(f *flow.Flow, s *packet.SessionIV,
 	return cli
 }
 
+func (c *Client) CloseChannel(src, dst string) error {
+	return c.group.CloseChannel(src, dst)
+}
+
 func (c *Client) Run() {
 	c.group.Run()
 	go c.loop()
@@ -60,6 +67,7 @@ func (c *Client) Close() {
 	c.flow.Close()
 }
 
+// AddHost will exclude endpoint which is already exists
 func (c *Client) AddHost(host string, port int) {
 	c.mutex.Lock()
 	added := util.InInts(int(port), c.ports)
@@ -83,7 +91,18 @@ func (c *Client) AddHost(host string, port int) {
 	}
 }
 
+func (c *Client) GetRunningChans() int {
+	return int(atomic.LoadInt32(&c.runningChans))
+}
+
+// used by MakeNewChannel
 func (c *Client) onChanExit(slot Slot) {
+	newRunning := atomic.AddInt32(&c.runningChans, -1)
+	if newRunning == 0 {
+		if c.onAllBackoff != nil {
+			go c.onAllBackoff()
+		}
+	}
 	select {
 	case c.connectChan <- slot:
 	case <-c.flow.IsClose():
@@ -111,7 +130,7 @@ func (c *Client) MakeNewChannel(slot Slot) error {
 
 func (c *Client) loop() {
 loop:
-	for {
+	for !c.flow.IsClosed() {
 		select {
 		case slot := <-c.connectChan:
 			err := c.MakeNewChannel(slot)
@@ -120,6 +139,8 @@ loop:
 				// send back, TODO: prevent deadlock
 				c.connectChan <- slot
 				logex.Error(err)
+			} else {
+				atomic.AddInt32(&c.runningChans, 1)
 			}
 		case p := <-c.toDC:
 			logex.Debug(p)
@@ -142,4 +163,8 @@ func (c *Client) UpdateRemoteAddrs(host string, ports []int) {
 	for _, p := range ports {
 		c.AddHost(host, p)
 	}
+}
+
+func (c *Client) SetOnAllBackoff(f func()) {
+	c.onAllBackoff = f
 }

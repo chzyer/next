@@ -131,11 +131,14 @@ func (c *Channel) AddOnClose(f func()) {
 }
 
 func (c *Channel) Close() {
+	if !c.flow.MarkExit() {
+		return
+	}
 	if c.exitError != nil {
-		logex.DownLevel(1).Info("where is exit")
-		logex.Info("exit by:", c.exitError)
+		logex.DownLevel(1).Debug("where is exit")
+		logex.Info(c.Name(), "exit by:", c.exitError)
 	} else {
-		logex.Info("exit manually")
+		logex.Info(c.Name(), "exit manually")
 	}
 	c.flow.Close()
 	c.conn.Close()
@@ -143,6 +146,14 @@ func (c *Channel) Close() {
 
 func (c *Channel) GetUserId() int {
 	return int(c.session.UserId)
+}
+
+func (c *Channel) Src() net.Addr {
+	return c.conn.LocalAddr()
+}
+
+func (c *Channel) Dst() net.Addr {
+	return c.conn.RemoteAddr()
 }
 
 func (c *Channel) Name() string {

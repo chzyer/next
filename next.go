@@ -10,6 +10,7 @@ import (
 	"github.com/chzyer/flow"
 	"github.com/chzyer/next/client"
 	"github.com/chzyer/next/server"
+	"github.com/chzyer/next/uc"
 	"github.com/chzyer/next/util"
 	"github.com/chzyer/readline"
 	"gopkg.in/logex.v1"
@@ -131,11 +132,12 @@ func (l *NextLogin) FlaglyHandle(f *flow.Flow) error {
 	}
 
 	cli := client.NewHTTP(client.FixHost(l.Remote), l.User, string(pswd), []byte(l.Key))
-	resp, err := cli.Login(nil)
-	if err != nil {
+	if err := cli.Login(func(resp *uc.AuthResponse) error {
+		ret, _ := json.MarshalIndent(resp, "", "\t")
+		println(string(ret))
+		return nil
+	}); err != nil {
 		return err
 	}
-	ret, _ := json.MarshalIndent(resp, "", "\t")
-	println(string(ret))
 	return nil
 }

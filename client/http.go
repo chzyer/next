@@ -57,14 +57,14 @@ func (c *HTTP) initClock() error {
 	return nil
 }
 
-func (c *HTTP) Login(onLogin func(*uc.AuthResponse) error) (*uc.AuthResponse, error) {
+func (c *HTTP) Login(onLogin func(*uc.AuthResponse) error) error {
 	if err := c.initClock(); err != nil {
-		return nil, logex.Trace(err)
+		return logex.Trace(err)
 	}
 
 	ret, err := c.doLogin(c.User, c.Pswd)
 	if err != nil {
-		return nil, logex.Trace(err)
+		return logex.Trace(err)
 	}
 	if ret.DataChannel == -1 {
 		time.Sleep(time.Second)
@@ -73,11 +73,11 @@ func (c *HTTP) Login(onLogin func(*uc.AuthResponse) error) (*uc.AuthResponse, er
 
 	if onLogin != nil {
 		if err := onLogin(ret); err != nil {
-			return nil, logex.Trace(err)
+			return logex.Trace(err)
 		}
 	}
 
-	return ret, nil
+	return nil
 }
 
 func (c *HTTP) doLogin(username string, password string) (*uc.AuthResponse, error) {

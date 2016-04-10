@@ -1,15 +1,27 @@
-package client
+package clish
 
 import (
 	"fmt"
 
 	"github.com/chzyer/flagly"
+	"github.com/chzyer/next/controller"
+	"github.com/chzyer/next/dchan"
 	"github.com/chzyer/next/ip"
+	"github.com/chzyer/next/route"
 	"github.com/chzyer/readline"
 	"gopkg.in/logex.v1"
 )
 
-type ShellCLI struct {
+type Client interface {
+	GetDataChannelStat() string
+	ShowControllerStage() []controller.StageInfo
+	GetController() *controller.Client
+	GetDchan() *dchan.Client
+	GetRoute() *route.Route
+	SaveRoute() error
+}
+
+type CLI struct {
 	Help       *flagly.CmdHelp  `flagly:"handler"`
 	Ping       *ShellPing       `flagly:"handler"`
 	HeartBeat  *ShellHeartBeat  `flagly:"handler"`
@@ -17,6 +29,7 @@ type ShellCLI struct {
 	Dig        *ShellDig        `flagly:"handler"`
 	Controller *ShellController `flagly:"handler"`
 	Debug      *ShellDebug      `flagly:"handler"`
+	Dchan      *Dchan           `flagly:"handler"`
 }
 
 type ShellDig struct {
@@ -27,7 +40,7 @@ func (sh *ShellDig) FlaglyDesc() string {
 	return "DNS lookup utility"
 }
 
-func (sh *ShellDig) FlaglyHandle(c *Client, rl *readline.Instance) error {
+func (sh *ShellDig) FlaglyHandle(c Client, rl *readline.Instance) error {
 	if sh.Host == "" {
 		return flagly.Error("host is required")
 	}
@@ -47,8 +60,8 @@ func (ShellHeartBeat) FlaglyDesc() string {
 	return "show the heartbeat stat"
 }
 
-func (*ShellHeartBeat) FlaglyHandle(c *Client, rl *readline.Instance) error {
-	stat := c.dcCli.GetStats()
+func (*ShellHeartBeat) FlaglyHandle(c Client, rl *readline.Instance) error {
+	stat := c.GetDataChannelStat()
 	fmt.Fprintln(rl, stat)
 	return nil
 }

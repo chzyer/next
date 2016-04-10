@@ -1,4 +1,4 @@
-package client
+package clish
 
 import (
 	"bytes"
@@ -29,15 +29,15 @@ type ShellRouteRemove struct {
 	CIDR string `type:"[0]"`
 }
 
-func (arg *ShellRouteRemove) FlaglyHandle(c *Client) error {
+func (arg *ShellRouteRemove) FlaglyHandle(c Client) error {
 	if arg.CIDR == "" {
 		return flagly.Error("CIDR is empty")
 	}
-	err := c.route.RemoveItem(arg.CIDR)
+	err := c.GetRoute().RemoveItem(arg.CIDR)
 	if err != nil {
 		return err
 	}
-	if err := c.route.Save(c.cfg.RouteFile); err != nil {
+	if err := c.SaveRoute(); err != nil {
 		return err
 	}
 	return fmt.Errorf("item '%v' removed", arg.CIDR)
@@ -47,8 +47,8 @@ func (arg *ShellRouteRemove) FlaglyHandle(c *Client) error {
 
 type ShellRouteShow struct{}
 
-func (ShellRouteShow) FlaglyHandle(c *Client, rl *readline.Instance) error {
-	eis := c.route.GetEphemeralItems()
+func (ShellRouteShow) FlaglyHandle(c Client, rl *readline.Instance) error {
+	eis := c.GetRoute().GetEphemeralItems()
 	if len(eis) > 0 {
 		fmt.Fprintln(rl, "EphemeralItem:")
 		for _, ei := range eis {
@@ -56,7 +56,7 @@ func (ShellRouteShow) FlaglyHandle(c *Client, rl *readline.Instance) error {
 		}
 
 	}
-	items := c.route.GetItems()
+	items := c.GetRoute().GetItems()
 
 	if len(items) > 0 {
 		if len(eis) > 0 {
@@ -90,7 +90,7 @@ func (arg *ShellRouteAddDomain) FlaglyDesc() string {
 	return "add a route by domain with duration"
 }
 
-func (arg *ShellRouteAddDomain) FlaglyHandle(c *Client, rl *readline.Instance) error {
+func (arg *ShellRouteAddDomain) FlaglyHandle(c Client, rl *readline.Instance) error {
 	if arg.Host == "" {
 		return flagly.Error("host is required")
 	}
@@ -127,7 +127,7 @@ type ShellRouteAdd struct {
 	Comment string `type:"[1]"`
 }
 
-func (arg *ShellRouteAdd) FlaglyHandle(c *Client) (err error) {
+func (arg *ShellRouteAdd) FlaglyHandle(c Client) (err error) {
 	if arg.CIDR == "" {
 		return flagly.Error("CIDR is empty")
 	}
@@ -139,11 +139,11 @@ func (arg *ShellRouteAdd) FlaglyHandle(c *Client) (err error) {
 		if err != nil {
 			return flagly.Error(err.Error())
 		}
-		err = c.route.AddItem(item)
+		err = c.GetRoute().AddItem(item)
 		if err != nil {
 			return err
 		}
-		err = c.route.Save(c.cfg.RouteFile)
+		err = c.SaveRoute()
 		if err != nil {
 			return err
 		}
@@ -157,11 +157,11 @@ func (arg *ShellRouteAdd) FlaglyHandle(c *Client) (err error) {
 			Item:    item,
 			Expired: time.Now().Add(arg.Duration).Round(time.Second),
 		}
-		err = c.route.AddEphemeralItem(ei)
+		err = c.GetRoute().AddEphemeralItem(ei)
 		if err != nil {
 			return err
 		}
-		err = c.route.Save(c.cfg.RouteFile)
+		err = c.SaveRoute()
 		if err != nil {
 			return err
 		}
@@ -176,7 +176,7 @@ type ShellRouteGet struct {
 	Host string `type:"[0]" name:"ip/host"`
 }
 
-func (s *ShellRouteGet) FlaglyHandle(c *Client) error {
+func (s *ShellRouteGet) FlaglyHandle(c Client) error {
 	if s.Host == "" {
 		return flagly.Error("Host is required")
 	}
@@ -203,7 +203,7 @@ func (s *ShellRouteGet) FlaglyHandle(c *Client) error {
 		if err != nil {
 			return err
 		}
-		item := c.route.Match(ipnet)
+		item := c.GetRoute().Match(ipnet)
 		buf.WriteString(util.FillString(cidr, max, " ") + "    ")
 		if item != nil {
 			buf.WriteString("ok\n")

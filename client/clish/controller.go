@@ -1,4 +1,4 @@
-package client
+package clish
 
 import (
 	"fmt"
@@ -13,7 +13,7 @@ type ShellController struct {
 type ShellControllerStage struct {
 }
 
-func (*ShellControllerStage) FlaglyHandle(c *Client, rl *readline.Instance) {
-	info := c.ctl.ShowStage()
+func (*ShellControllerStage) FlaglyHandle(c Client, rl *readline.Instance) {
+	info := c.ShowControllerStage()
 	fmt.Fprintf(rl, "staging: %v\n", len(info))
 }

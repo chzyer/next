@@ -1,14 +1,13 @@
-package client
+package clish
 
 import (
 	"bytes"
 	"fmt"
 	"runtime"
 
-	"gopkg.in/logex.v1"
-
 	"github.com/chzyer/flagly"
 	"github.com/chzyer/readline"
+	"gopkg.in/logex.v1"
 )
 
 type ShellDebug struct {
@@ -19,8 +18,8 @@ type ShellDebug struct {
 
 type ShellDebugUseful struct{}
 
-func (ShellDebugUseful) FlaglyHandle(rl *readline.Instance, c *Client) {
-	chs := c.dcCli.GetUsefulChan()
+func (ShellDebugUseful) FlaglyHandle(rl *readline.Instance, c Client) {
+	chs := c.GetDchan().GetUsefulChan()
 	buf := bytes.NewBuffer(nil)
 	for _, ch := range chs {
 		buf.WriteString(fmt.Sprintf("%v: %v\n",

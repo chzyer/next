@@ -9,6 +9,10 @@ import (
 
 	"github.com/chzyer/flagly"
 	"github.com/chzyer/flow"
+	"github.com/chzyer/next/client/clish"
+	"github.com/chzyer/next/controller"
+	"github.com/chzyer/next/dchan"
+	"github.com/chzyer/next/route"
 	"github.com/chzyer/readline"
 	"github.com/google/shlex"
 
@@ -46,7 +50,7 @@ func (s *Shell) Close() {
 func (s *Shell) handleConn(conn net.Conn) {
 	defer conn.Close()
 
-	sh := &ShellCLI{}
+	sh := &clish.CLI{}
 	fset, err := flagly.Compile("", sh)
 	if err != nil {
 		logex.Info(err)
@@ -71,7 +75,8 @@ func (s *Shell) handleConn(conn net.Conn) {
 	}
 	defer rl.Close()
 
-	fset.Context(rl, s.client)
+	var client clish.Client = s.client
+	fset.Context(rl, &client)
 
 	if readline.IsTerminal(0) {
 		fmt.Fprintln(rl, "Next Client CLI")
@@ -108,4 +113,27 @@ func (s *Shell) loop() {
 		}
 		go s.handleConn(conn)
 	}
+}
+
+// Shell Delegate
+// -----------------------------------------------------------------------------
+
+func (c *Client) GetDataChannelStat() string {
+	return c.dcCli.GetStats()
+}
+
+func (c *Client) ShowControllerStage() []controller.StageInfo {
+	return c.ctl.ShowStage()
+}
+
+func (c *Client) GetController() *controller.Client {
+	return c.ctl
+}
+
+func (c *Client) GetDchan() *dchan.Client {
+	return c.dcCli
+}
+
+func (c *Client) GetRoute() *route.Route {
+	return c.route
 }
