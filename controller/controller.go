@@ -72,6 +72,7 @@ func (c *Controller) send(req *Request) *packet.Packet {
 	}
 	select {
 	case c.in <- req:
+		logex.Debug(req.Packet.Type.String())
 		if req.Reply != nil {
 			select {
 			case rep := <-req.Reply:
@@ -156,7 +157,11 @@ loop:
 			} else {
 				// println("I reply to:", req.Packet.IV.ReqId)
 			}
-			c.toDC <- req.Packet
+			select {
+			case c.toDC <- req.Packet:
+			case <-c.flow.IsClose():
+				break loop
+			}
 		}
 	}
 }

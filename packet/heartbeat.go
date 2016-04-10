@@ -137,23 +137,26 @@ type HeartBeatStage struct {
 	receiveChan chan *IV
 	addChan     chan *IV
 	timeout     time.Duration
-	clean       func(error)
-	name        string
+	delegate    CleanDelegate
 
 	stat HeartBeatStat
 }
 
-func NewHeartBeatStage(f *flow.Flow, timeout time.Duration, name string, clean func(error)) *HeartBeatStage {
+type CleanDelegate interface {
+	HeartBeatClean(error)
+}
+
+func NewHeartBeatStage(f *flow.Flow, timeout time.Duration, d CleanDelegate) *HeartBeatStage {
 	hbs := &HeartBeatStage{
 		timeout:     timeout,
 		staging:     list.New(),
 		receiveChan: make(chan *IV, 8),
 		addChan:     make(chan *IV, 8),
-		name:        name,
 		flow:        f,
-		clean:       clean,
+		delegate:    d,
 	}
 	hbs.stat.start = time.Now()
+	hbs.stat.lastCommit = time.Now().Unix()
 	go hbs.loop()
 	return hbs
 }
@@ -163,11 +166,17 @@ func (h *HeartBeatStage) New() *Packet {
 }
 
 func (h *HeartBeatStage) Add(iv *IV) {
-	h.addChan <- iv
+	select {
+	case h.addChan <- iv:
+	case <-h.flow.IsClose():
+	}
 }
 
 func (h *HeartBeatStage) Receive(iv *IV) {
-	h.receiveChan <- iv
+	select {
+	case h.receiveChan <- iv:
+	case <-h.flow.IsClose():
+	}
 }
 
 func (h *HeartBeatStage) findElem(reqid uint32) *list.Element {
@@ -192,7 +201,7 @@ func (h *HeartBeatStage) GetStat() *HeartBeatStat {
 
 func (h *HeartBeatStage) tryClean() bool {
 	if err := h.stat.isNeedClean(); err != nil {
-		h.clean(err)
+		h.delegate.HeartBeatClean(err)
 		return true
 	}
 	return false
@@ -200,6 +209,13 @@ func (h *HeartBeatStage) tryClean() bool {
 
 func (h *HeartBeatStage) item(elem *list.Element) heartBeatItem {
 	return elem.Value.(heartBeatItem)
+}
+
+func (h *HeartBeatStage) GetLatency() (latency, lastCommit time.Duration) {
+	n := int(time.Now().Unix() - h.stat.lastCommit)
+	lastCommit = time.Duration(n) * time.Second
+	info := h.stat.getMin(1)
+	return info.rtt(), lastCommit
 }
 
 func (h *HeartBeatStage) loop() {
@@ -216,7 +232,8 @@ loop:
 			duration := time.Duration(time.Now().Unix()-lastCommit) * time.Second
 			if duration > 10*time.Second {
 				rtt := h.GetStat().getMin(1).rtt()
-				h.clean(fmt.Errorf("more than 10 second not response, current: %v", rtt))
+				h.delegate.HeartBeatClean(fmt.Errorf(
+					"more than 10 second not response, current: %v", rtt))
 				break loop
 			}
 		case iv := <-h.receiveChan:

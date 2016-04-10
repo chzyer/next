@@ -37,12 +37,13 @@ func New(f *flow.Flow, conn net.Conn, session *packet.SessionIV, cfg *Config) *D
 	}
 
 	f.ForkTo(&dc.flow, dc.Close)
-	dc.heartBeat = packet.NewHeartBeatStage(
-		dc.flow, 3*time.Second, dc.Name(), func(err error) {
-			dc.exitError = fmt.Errorf("monitor: %v", err)
-			dc.Close()
-		})
+	dc.heartBeat = packet.NewHeartBeatStage(dc.flow, 3*time.Second, dc)
 	return dc
+}
+
+func (d *DC) HeartBeatClean(err error) {
+	d.exitError = fmt.Errorf("monitor: %v", err)
+	d.Close()
 }
 
 func (d *DC) Run(in <-chan *packet.Packet, out chan<- *packet.Packet) {

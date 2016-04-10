@@ -7,7 +7,7 @@ import (
 
 	"github.com/chzyer/flow"
 	"github.com/chzyer/next/controller"
-	"github.com/chzyer/next/datachannel"
+	"github.com/chzyer/next/dchan"
 	"github.com/chzyer/next/packet"
 	"github.com/chzyer/next/route"
 	"github.com/chzyer/next/uc"
@@ -26,7 +26,7 @@ type Client struct {
 
 	ctl *controller.Client
 
-	dcs   *datachannel.Client
+	dcCli *dchan.Client
 	dcIn  chan *packet.Packet
 	dcOut chan *packet.Packet
 }
@@ -52,13 +52,14 @@ func (c *Client) initDataChannel(remoteCfg *uc.AuthResponse) (err error) {
 	session := packet.NewSessionIV(
 		uint16(remoteCfg.UserId), uint16(port), []byte(remoteCfg.Token))
 
-	dcs := datachannel.NewClient(c.flow,
-		c.cfg.GetHostName(), port,
-		session, c.dcIn, c.dcOut)
+	dcCli := dchan.NewClient(c.flow, session, c.dcIn, c.dcOut)
+	dcCli.AddHost(c.cfg.GetHostName(), port)
+	c.dcCli = dcCli
+	dcCli.Run()
 
-	dcs.SetOnAllChannelsBackoff(func() {
+	_ = func() {
 		logex.Info("all channels backoff")
-		dcs.Close()
+		// dcs.Close()
 		for {
 			resp, err := c.HTTP.Login(c.onLogin)
 			if err != nil {
@@ -74,8 +75,7 @@ func (c *Client) initDataChannel(remoteCfg *uc.AuthResponse) (err error) {
 			*remoteCfg = *resp
 			break
 		}
-	})
-	c.dcs = dcs
+	}
 
 	return nil
 }
@@ -172,5 +172,5 @@ func (c *Client) runShell() error {
 // -----------------------------------------------------------------------------
 // controller
 func (c *Client) OnNewDC(ports []int) {
-	c.dcs.UpdateRemoteAddrs(ports)
+	c.dcCli.UpdateRemoteAddrs(c.cfg.GetHostName(), ports)
 }

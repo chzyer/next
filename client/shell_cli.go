@@ -48,7 +48,7 @@ func (ShellHeartBeat) FlaglyDesc() string {
 }
 
 func (*ShellHeartBeat) FlaglyHandle(c *Client, rl *readline.Instance) error {
-	stat := c.dcs.GetStats()
+	stat := c.dcCli.GetStats()
 	fmt.Fprintln(rl, stat)
 	return nil
 }
