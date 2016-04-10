@@ -24,7 +24,6 @@ type Client interface {
 type CLI struct {
 	Help       *flagly.CmdHelp  `flagly:"handler"`
 	Ping       *ShellPing       `flagly:"handler"`
-	HeartBeat  *ShellHeartBeat  `flagly:"handler"`
 	Route      *ShellRoute      `flagly:"handler"`
 	Dig        *ShellDig        `flagly:"handler"`
 	Controller *ShellController `flagly:"handler"`
@@ -51,18 +50,6 @@ func (sh *ShellDig) FlaglyHandle(c Client, rl *readline.Instance) error {
 	for _, addr := range addrs {
 		fmt.Fprintln(rl, addr)
 	}
-	return nil
-}
-
-type ShellHeartBeat struct{}
-
-func (ShellHeartBeat) FlaglyDesc() string {
-	return "show the heartbeat stat"
-}
-
-func (*ShellHeartBeat) FlaglyHandle(c Client, rl *readline.Instance) error {
-	stat := c.GetDataChannelStat()
-	fmt.Fprintln(rl, stat)
 	return nil
 }
 

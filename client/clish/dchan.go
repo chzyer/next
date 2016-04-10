@@ -1,9 +1,15 @@
 package clish
 
-import "github.com/chzyer/flagly"
+import (
+	"fmt"
+	"strings"
+
+	"github.com/chzyer/flagly"
+)
 
 type Dchan struct {
 	Close *DchanClose `flagly:"handler"`
+	List  *DchanList  `flagly:"handler"`
 }
 
 type DchanClose struct {
@@ -16,4 +22,11 @@ func (d *DchanClose) FlaglyHandle(c Client) error {
 		return flagly.Error("src/dst is both required")
 	}
 	return c.GetDchan().CloseChannel(d.Src, d.Dst)
+}
+
+type DchanList struct{}
+
+func (DchanList) FlaglyHandle(c Client) error {
+	stat := c.GetDataChannelStat()
+	return fmt.Errorf("%v", strings.TrimSpace(stat))
 }

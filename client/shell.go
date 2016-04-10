@@ -78,7 +78,7 @@ func (s *Shell) handleConn(conn net.Conn) {
 	var client clish.Client = s.client
 	fset.Context(rl, &client)
 
-	if readline.IsTerminal(0) {
+	if rl.Config.FuncIsTerminal() {
 		fmt.Fprintln(rl, "Next Client CLI")
 	}
 	for {

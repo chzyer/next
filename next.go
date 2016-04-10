@@ -1,10 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net"
 	"os"
+	"strings"
 
 	"github.com/chzyer/flagly"
 	"github.com/chzyer/flow"
@@ -61,12 +65,31 @@ func (NextGenKey) FlaglyDesc() string {
 // -----------------------------------------------------------------------------
 
 type NextShell struct {
-	Sock string `default:"/tmp/next.sock"`
+	Sock string   `default:"/tmp/next.sock"`
+	Args []string `type:"[]"`
 }
 
 func (n *NextShell) FlaglyHandle(f *flow.Flow) error {
 	defer f.Close()
-	return readline.DialRemote("unix", n.Sock)
+
+	conn, err := net.Dial("unix", n.Sock)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	cli, err := readline.NewRemoteCli(conn)
+	if err != nil {
+		return err
+	}
+	var source io.Reader
+	if len(n.Args) > 0 {
+		cli.MarkIsTerminal(false)
+		source = bytes.NewBufferString(strings.Join(n.Args, " ") + "\n")
+	} else {
+		source = os.Stdin
+	}
+	return cli.ServeBy(source)
 }
 
 func (NextShell) FlaglyDesc() string {
