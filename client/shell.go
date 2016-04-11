@@ -19,6 +19,10 @@ import (
 	"gopkg.in/logex.v1"
 )
 
+var (
+	ErrNotReady = logex.Define("not ready")
+)
+
 type Shell struct {
 	flow   *flow.Flow
 	Sock   string
@@ -63,7 +67,7 @@ func (s *Shell) handleConn(conn net.Conn) {
 		homeDir = userAcct.HomeDir
 	}
 
-	hf := filepath.Join(homeDir, ".nextcli_history")
+	hf := filepath.Join(homeDir, ".nexthistory")
 	cfg := readline.Config{
 		HistoryFile:  hf,
 		Prompt:       " -> ",
@@ -118,22 +122,39 @@ func (s *Shell) loop() {
 // Shell Delegate
 // -----------------------------------------------------------------------------
 
-func (c *Client) GetDataChannelStat() string {
-	return c.dcCli.GetStats()
+func (c *Client) GetDataChannelStat() (string, error) {
+	dc, err := c.GetDchan()
+	if err != nil {
+		return "", err
+	}
+	return dc.GetStats(), nil
 }
 
-func (c *Client) ShowControllerStage() []controller.StageInfo {
-	return c.ctl.ShowStage()
+func (c *Client) ShowControllerStage() ([]controller.StageInfo, error) {
+	ctl, err := c.GetController()
+	if err != nil {
+		return nil, err
+	}
+	return ctl.ShowStage(), nil
 }
 
-func (c *Client) GetController() *controller.Client {
-	return c.ctl
+func (c *Client) GetController() (*controller.Client, error) {
+	if c.ctl == nil {
+		return nil, ErrNotReady
+	}
+	return c.ctl, nil
 }
 
-func (c *Client) GetDchan() *dchan.Client {
-	return c.dcCli
+func (c *Client) GetDchan() (*dchan.Client, error) {
+	if c.dcCli == nil {
+		return nil, ErrNotReady
+	}
+	return c.dcCli, nil
 }
 
-func (c *Client) GetRoute() *route.Route {
-	return c.route
+func (c *Client) GetRoute() (*route.Route, error) {
+	if c.route == nil {
+		return nil, ErrNotReady
+	}
+	return c.route, nil
 }

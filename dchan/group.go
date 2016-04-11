@@ -91,16 +91,13 @@ func (g *Group) GetUsefulChan() []*Channel {
 }
 
 func (g *Group) GetStatsInfo() string {
-	g.chanListGuard.RLock()
-	defer g.chanListGuard.RUnlock()
-
 	buf := bytes.NewBuffer(nil)
-	for elem := g.chanList.Front(); elem != nil; elem = elem.Next() {
-		ch := elem.Value.(*Channel)
+	g.findChannel(func(ch *Channel) bool {
 		buf.WriteString(fmt.Sprintf("%v: %v\n",
 			ch.Name(), ch.GetStat().String(),
 		))
-	}
+		return false
+	})
 	return buf.String()
 }
 
@@ -119,7 +116,9 @@ loop:
 	for {
 		select {
 		case <-usefulTick.C:
-			g.updateUseful()
+			g.chanListGuard.Lock()
+			g.updateUsefulLocked()
+			g.chanListGuard.Unlock()
 		case <-g.flow.IsClose():
 			break loop
 		}
@@ -165,12 +164,10 @@ func (g *Group) findUsefulLocked() []int {
 	return ret
 }
 
-func (g *Group) updateUseful() {
-	g.chanListGuard.Lock()
+func (g *Group) updateUsefulLocked() {
 	useful := g.findUsefulLocked()
 	old := g.GetUseful()
 	g.usefulChans.Store(useful)
-	g.chanListGuard.Unlock()
 	// notify
 	if !util.EqualInts(useful, old) {
 		select {
@@ -214,6 +211,7 @@ func (g *Group) AddWithAutoRemove(c *Channel) {
 	g.chanListGuard.Lock()
 	elem := g.chanList.PushFront(c)
 	g.makeSelectCaseLocked()
+	g.updateUsefulLocked()
 	g.chanListGuard.Unlock()
 
 	c.AddOnClose(func() {
@@ -221,10 +219,10 @@ func (g *Group) AddWithAutoRemove(c *Channel) {
 		g.chanListGuard.Lock()
 		g.chanList.Remove(elem)
 		g.makeSelectCaseLocked()
+		g.updateUsefulLocked()
 		g.chanListGuard.Unlock()
 	})
 
-	g.updateUseful()
 }
 
 func (g *Group) makeSelectCaseLocked() {

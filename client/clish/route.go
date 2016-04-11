@@ -33,8 +33,11 @@ func (arg *ShellRouteRemove) FlaglyHandle(c Client) error {
 	if arg.CIDR == "" {
 		return flagly.Error("CIDR is empty")
 	}
-	err := c.GetRoute().RemoveItem(arg.CIDR)
+	ch, err := c.GetRoute()
 	if err != nil {
+		return err
+	}
+	if err := ch.RemoveItem(arg.CIDR); err != nil {
 		return err
 	}
 	if err := c.SaveRoute(); err != nil {
@@ -48,7 +51,11 @@ func (arg *ShellRouteRemove) FlaglyHandle(c Client) error {
 type ShellRouteShow struct{}
 
 func (ShellRouteShow) FlaglyHandle(c Client, rl *readline.Instance) error {
-	eis := c.GetRoute().GetEphemeralItems()
+	route, err := c.GetRoute()
+	if err != nil {
+		return err
+	}
+	eis := route.GetEphemeralItems()
 	if len(eis) > 0 {
 		fmt.Fprintln(rl, "EphemeralItem:")
 		for _, ei := range eis {
@@ -56,7 +63,7 @@ func (ShellRouteShow) FlaglyHandle(c Client, rl *readline.Instance) error {
 		}
 
 	}
-	items := c.GetRoute().GetItems()
+	items := route.GetItems()
 
 	if len(items) > 0 {
 		if len(eis) > 0 {
@@ -139,7 +146,11 @@ func (arg *ShellRouteAdd) FlaglyHandle(c Client) (err error) {
 		if err != nil {
 			return flagly.Error(err.Error())
 		}
-		err = c.GetRoute().AddItem(item)
+		routeTable, err := c.GetRoute()
+		if err != nil {
+			return err
+		}
+		err = routeTable.AddItem(item)
 		if err != nil {
 			return err
 		}
@@ -157,7 +168,11 @@ func (arg *ShellRouteAdd) FlaglyHandle(c Client) (err error) {
 			Item:    item,
 			Expired: time.Now().Add(arg.Duration).Round(time.Second),
 		}
-		err = c.GetRoute().AddEphemeralItem(ei)
+		routeTable, err := c.GetRoute()
+		if err != nil {
+			return err
+		}
+		err = routeTable.AddEphemeralItem(ei)
 		if err != nil {
 			return err
 		}
@@ -203,7 +218,11 @@ func (s *ShellRouteGet) FlaglyHandle(c Client) error {
 		if err != nil {
 			return err
 		}
-		item := c.GetRoute().Match(ipnet)
+		routeTable, err := c.GetRoute()
+		if err != nil {
+			return err
+		}
+		item := routeTable.Match(ipnet)
 		buf.WriteString(util.FillString(cidr, max, " ") + "    ")
 		if item != nil {
 			buf.WriteString("ok\n")

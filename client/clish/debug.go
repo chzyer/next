@@ -1,7 +1,6 @@
 package clish
 
 import (
-	"bytes"
 	"fmt"
 	"runtime"
 
@@ -13,20 +12,6 @@ import (
 type ShellDebug struct {
 	Goroutine *ShellDebugGoroutine `flagly:"handler"`
 	Log       *ShellDebugLog       `flagly:"handler"`
-	Useful    *ShellDebugUseful    `flagly:"handler"`
-}
-
-type ShellDebugUseful struct{}
-
-func (ShellDebugUseful) FlaglyHandle(rl *readline.Instance, c Client) {
-	chs := c.GetDchan().GetUsefulChan()
-	buf := bytes.NewBuffer(nil)
-	for _, ch := range chs {
-		buf.WriteString(fmt.Sprintf("%v: %v\n",
-			ch.Name(), ch.GetStat().String(),
-		))
-	}
-	fmt.Fprintf(rl, "%v", buf.String())
 }
 
 type ShellDebugGoroutine struct{}

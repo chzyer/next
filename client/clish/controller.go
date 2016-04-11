@@ -1,10 +1,6 @@
 package clish
 
-import (
-	"fmt"
-
-	"github.com/chzyer/readline"
-)
+import "fmt"
 
 type ShellController struct {
 	Stage *ShellControllerStage `flagly:"handler"`
@@ -13,7 +9,10 @@ type ShellController struct {
 type ShellControllerStage struct {
 }
 
-func (*ShellControllerStage) FlaglyHandle(c Client, rl *readline.Instance) {
-	info := c.ShowControllerStage()
-	fmt.Fprintf(rl, "staging: %v\n", len(info))
+func (*ShellControllerStage) FlaglyHandle(c Client) error {
+	info, err := c.ShowControllerStage()
+	if err != nil {
+		return err
+	}
+	return fmt.Errorf("staging: %v\n", len(info))
 }

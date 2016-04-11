@@ -13,11 +13,11 @@ import (
 )
 
 type Client interface {
-	GetDataChannelStat() string
-	ShowControllerStage() []controller.StageInfo
-	GetController() *controller.Client
-	GetDchan() *dchan.Client
-	GetRoute() *route.Route
+	GetDataChannelStat() (string, error)
+	ShowControllerStage() ([]controller.StageInfo, error)
+	GetController() (*controller.Client, error)
+	GetDchan() (*dchan.Client, error)
+	GetRoute() (*route.Route, error)
 	SaveRoute() error
 }
 
