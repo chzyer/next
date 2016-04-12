@@ -1,0 +1,18 @@
+language: go
+go:
+  - 1.4
+  - 1.5
+  - 1.6
+before_install:
+  - go get github.com/chzyer/flagly
+  - go get github.com/chzyer/flow
+  - go get github.com/chzyer/readline
+  - go get github.com/chzyer/test
+  - go get github.com/chzyer/tunnel
+  - go get github.com/google/shlex
+  - go get gopkg.in/logex.v1
+script:
+  - GOOS=linux go install github.com/chzyer/next/...
+  - GOOS=darwin go install github.com/chzyer/next/...
+  - go test -v ./...
+  - go vet ./...
