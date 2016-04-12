@@ -4,7 +4,6 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/chzyer/flow"
 	"github.com/chzyer/next/packet"
 	"github.com/chzyer/test"
 )
@@ -21,7 +20,7 @@ func TestStage(t *testing.T) {
 	defer test.New(t)
 
 	dr := &dumpReqider{}
-	s := newStage(flow.New())
+	s := newStage()
 	p := packet.New(nil, packet.HEARTBEAT)
 	p.InitIV(dr)
 	req := NewRequest(p, true)
