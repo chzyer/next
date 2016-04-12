@@ -120,7 +120,11 @@ func (p *Packet) Marshal(s *SessionIV) []byte {
 			randLength = 0
 		}
 	} else {
-		randLength -= totalLength
+		if totalLength < 64 {
+			randLength = 64 - totalLength
+		} else {
+			randLength -= totalLength
+		}
 	}
 	buffer := make([]byte, 2+randLength+totalLength)
 
