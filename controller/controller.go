@@ -135,6 +135,9 @@ loop:
 }
 
 func (c *Controller) resendLoop() {
+	c.flow.Add(1)
+	defer c.flow.DoneAndClose()
+
 	ticker := time.NewTicker(c.timeout)
 	defer ticker.Stop()
 loop:
@@ -153,8 +156,12 @@ loop:
 			} else {
 				logex.Info("resend:", req.Packet.IV.ReqId, req.Packet.Type.String())
 			}
-			c.in <- req
-			goto repop
+			select {
+			case c.in <- req:
+				goto repop
+			case <-c.flow.IsClose():
+				break loop
+			}
 		}
 	}
 }
