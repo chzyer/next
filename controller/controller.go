@@ -11,24 +11,26 @@ import (
 )
 
 type Controller struct {
-	flow   *flow.Flow
-	in     chan *Request
-	out    chan *packet.Packet
-	toDC   chan<- *packet.Packet
-	fromDC <-chan *packet.Packet
-	reqId  uint32
-	stage  *Stage
+	timeout time.Duration
+	flow    *flow.Flow
+	in      chan *Request
+	out     chan *packet.Packet
+	toDC    chan<- *packet.Packet
+	fromDC  <-chan *packet.Packet
+	reqId   uint32
+	stage   *Stage
 }
 
 func NewController(f *flow.Flow, toDC chan<- *packet.Packet, fromDC <-chan *packet.Packet) *Controller {
 	ctl := &Controller{
-		in:     make(chan *Request, 8),
-		out:    make(chan *packet.Packet),
-		toDC:   toDC,
-		fromDC: fromDC,
+		timeout: 2 * time.Second,
+		in:      make(chan *Request, 8),
+		out:     make(chan *packet.Packet),
+		toDC:    toDC,
+		fromDC:  fromDC,
 	}
 	f.ForkTo(&ctl.flow, ctl.Close)
-	ctl.stage = newStage(ctl.flow)
+	ctl.stage = newStage()
 	go ctl.readLoop()
 	go ctl.writeLoop()
 	go ctl.resendLoop()
@@ -133,8 +135,23 @@ loop:
 }
 
 func (c *Controller) resendLoop() {
-	for _ = range time.Tick(time.Second) {
-		// println(len(c.staging))
+	ticker := time.NewTicker(c.timeout)
+	defer ticker.Stop()
+loop:
+	for {
+		switch c.flow.Tick(ticker) {
+		case flow.F_CLOSED:
+			break loop
+		case flow.F_TIMEOUT:
+		repop:
+			req := c.stage.Pop(c.timeout)
+			if req == nil {
+				continue
+			}
+			logex.Info("resend:", req.Packet.IV.ReqId)
+			c.in <- req
+			goto repop
+		}
 	}
 }
 
