@@ -88,6 +88,7 @@ func (c *Client) AddHost(host string, port int) {
 		select {
 		case c.connectChan <- slot:
 		case <-c.flow.IsClose():
+			logex.Info("flow is closed, ignore AddHost")
 		}
 	}
 }
@@ -141,6 +142,7 @@ loop:
 	for !c.flow.IsClosed() {
 		select {
 		case slot := <-c.connectChan:
+			logex.Infof("prepare to connect to %v:%v", slot.Host, slot.Port)
 			err := c.MakeNewChannel(slot)
 			if err != nil {
 				logex.Error(err, ",wait 1 second")
