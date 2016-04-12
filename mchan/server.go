@@ -66,7 +66,7 @@ func (s *Server) write(w http.ResponseWriter, data []byte) {
 	n, err := w.Write(data)
 	logex.Debugf("write %v bytes", n)
 	if n != len(data) {
-		logex.Error("short write: %v, %v", n, len(data))
+		logex.Errorf("short write: %v, %v", n, len(data))
 		return
 	}
 	if err != nil {

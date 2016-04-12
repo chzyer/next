@@ -71,7 +71,7 @@ func (s *Shell) handleConn(conn net.Conn) {
 	cfg := readline.Config{
 		HistoryFile:  hf,
 		Prompt:       " -> ",
-		AutoComplete: &readline.SegmentComplete{fset.Completer()},
+		AutoComplete: readline.SegmentAutoComplete(fset.Completer()),
 	}
 	rl, err := readline.HandleConn(cfg, conn)
 	if err != nil {

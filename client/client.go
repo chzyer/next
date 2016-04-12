@@ -59,6 +59,7 @@ loop:
 	for {
 		select {
 		case <-c.needLoginChan:
+			logex.Info("need to login")
 		resend:
 			if err := c.HTTP.Login(c.onLogin); err != nil {
 				logex.Error(err)
@@ -201,6 +202,7 @@ func (c *Client) runShell() error {
 
 // -----------------------------------------------------------------------------
 // controller
+
 func (c *Client) OnNewDC(ports []int) {
 	c.dcCli.UpdateRemoteAddrs(c.cfg.GetHostName(), ports)
 }

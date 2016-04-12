@@ -38,7 +38,7 @@ func newTun(f *flow.Flow, remoteCfg *uc.AuthResponse, cfg *Config) (*Tun, error)
 	return t, nil
 }
 
-// non-test
+// ConfigUpdate: non-test
 func (t *Tun) ConfigUpdate(remoteCfg *uc.AuthResponse) {
 
 }

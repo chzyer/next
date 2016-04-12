@@ -134,6 +134,9 @@ func (c *Client) MakeNewChannel(slot Slot) error {
 }
 
 func (c *Client) loop() {
+	c.flow.Add(1)
+	defer c.flow.DoneAndClose()
+
 loop:
 	for !c.flow.IsClosed() {
 		select {
@@ -143,7 +146,12 @@ loop:
 				logex.Error(err, ",wait 1 second")
 				time.Sleep(time.Second)
 				// send back, TODO: prevent deadlock
-				c.connectChan <- slot
+				select {
+				case c.connectChan <- slot:
+					logex.Info("resend back to channel")
+				case <-c.flow.IsClose():
+					break loop
+				}
 			} else {
 				atomic.AddInt32(&c.runningChans, 1)
 			}
