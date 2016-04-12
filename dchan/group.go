@@ -24,6 +24,7 @@ type Group struct {
 
 	onNewUsefulChan  chan struct{}
 	onNewUsefullCase reflect.SelectCase
+	flowIsCloseCase  reflect.SelectCase
 
 	usefulChans atomic.Value // []int
 	selectCase  []reflect.SelectCase
@@ -40,6 +41,10 @@ func NewGroup(f *flow.Flow) *Group {
 		},
 	}
 	f.ForkTo(&g.flow, g.Close)
+	g.flowIsCloseCase = reflect.SelectCase{
+		Dir:  reflect.SelectRecv,
+		Chan: reflect.ValueOf(f.IsClose()),
+	}
 	return g
 }
 
@@ -190,14 +195,16 @@ func (g *Group) Send(p *packet.Packet) {
 resend:
 	g.chanListGuard.RLock()
 	usefulChans := g.GetUseful()
-	selectCase := make([]reflect.SelectCase, len(usefulChans)+1)
+	selectCase := make([]reflect.SelectCase, len(usefulChans)+2)
 	for caseIdx, chanIdx := range usefulChans {
 		selectCase[caseIdx] = g.selectCase[chanIdx]
 		selectCase[caseIdx].Send = pv
 	}
 	g.chanListGuard.RUnlock()
 
-	// notify if we got a new chose
+	// case <-g.flow.IsClosed()
+	selectCase[len(selectCase)-2] = g.flowIsCloseCase
+	// case <-g.onNewUsefulChan:  notify if we got a new chose
 	selectCase[len(selectCase)-1] = g.onNewUsefullCase
 	// TODO: how about all of this is fail?
 	chosen, _, _ := reflect.Select(selectCase)

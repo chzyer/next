@@ -91,9 +91,11 @@ func (c *Client) initDataChannel(remoteCfg *uc.AuthResponse) (err error) {
 	dcCli.SetOnAllBackoff(func() {
 		logex.Info("all dchan is backoff")
 		dcCli.Close()
+		logex.Info("send needLogin chan")
 		select {
 		case c.needLoginChan <- struct{}{}:
-		default:
+			logex.Info("send needLogin chan success")
+		case <-c.flow.IsClose():
 		}
 	})
 	c.dcCli = dcCli

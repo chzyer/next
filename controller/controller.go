@@ -148,7 +148,11 @@ loop:
 			if req == nil {
 				continue
 			}
-			logex.Info("resend:", req.Packet.IV.ReqId)
+			if req.Packet.Type == packet.DATA {
+				logex.Debug("resend:", req.Packet.IV.ReqId, req.Packet.Type.String())
+			} else {
+				logex.Info("resend:", req.Packet.IV.ReqId, req.Packet.Type.String())
+			}
 			c.in <- req
 			goto repop
 		}
