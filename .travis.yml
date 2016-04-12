@@ -1,8 +1,7 @@
 language: go
 go:
-  - 1.4
-  - 1.5
-  - 1.6
+  - GIMME_OS=linux CGO_ENABLED=1
+  - GIMME_OS=darwin CGO_ENABLED=1
 before_install:
   - go get github.com/chzyer/flagly
   - go get github.com/chzyer/flow
