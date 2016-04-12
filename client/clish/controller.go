@@ -2,17 +2,16 @@ package clish
 
 import "fmt"
 
-type ShellController struct {
-	Stage *ShellControllerStage `flagly:"handler"`
+type Controller struct {
+	Stage *ControllerStage `flagly:"handler"`
 }
 
-type ShellControllerStage struct {
-}
+type ControllerStage struct{}
 
-func (*ShellControllerStage) FlaglyHandle(c Client) error {
+func (*ControllerStage) FlaglyHandle(c Client) error {
 	info, err := c.ShowControllerStage()
 	if err != nil {
 		return err
 	}
-	return fmt.Errorf("staging: %v\n", len(info))
+	return fmt.Errorf("staging: %v", len(info))
 }

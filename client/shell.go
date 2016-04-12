@@ -158,3 +158,11 @@ func (c *Client) GetRoute() (*route.Route, error) {
 	}
 	return c.route, nil
 }
+
+func (c *Client) Relogin() {
+	c.dcCli.Close()
+	select {
+	case c.needLoginChan <- struct{}{}:
+	case <-c.flow.IsClose():
+	}
+}

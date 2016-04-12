@@ -12,6 +12,13 @@ import (
 type ShellDebug struct {
 	Goroutine *ShellDebugGoroutine `flagly:"handler"`
 	Log       *ShellDebugLog       `flagly:"handler"`
+	Login     *Login               `flagly:"handler"`
+}
+
+type Login struct{}
+
+func (Login) FlaglyHandle(c Client) {
+	c.Relogin()
 }
 
 type ShellDebugGoroutine struct{}

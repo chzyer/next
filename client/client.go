@@ -3,6 +3,7 @@ package client
 import (
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/chzyer/flow"
@@ -79,6 +80,11 @@ func (c *Client) initDataChannel(remoteCfg *uc.AuthResponse) (err error) {
 	session := packet.NewSessionIV(
 		uint16(remoteCfg.UserId), uint16(port), []byte(remoteCfg.Token))
 
+	if c.dcCli != nil {
+		c.dcCli.Close()
+		c.dcCli = nil
+	}
+
 	dcCli := dchan.NewClient(c.flow, session, c.dcIn, c.dcOut)
 	dcCli.AddHost(c.cfg.GetHostName(), port)
 	dcCli.SetOnAllBackoff(func() {
@@ -91,6 +97,7 @@ func (c *Client) initDataChannel(remoteCfg *uc.AuthResponse) (err error) {
 	})
 	c.dcCli = dcCli
 	dcCli.Run()
+	logex.Info("datachannel inited:", dcCli.Ports())
 	return nil
 }
 
@@ -129,6 +136,7 @@ func (c *Client) onLogin(remoteCfg *uc.AuthResponse) error {
 	}
 
 	c.initRouteTable()
+
 	go c.tunToControllerLoop(tunOut)
 
 	return nil
@@ -167,7 +175,12 @@ func (c *Client) Run() {
 		return
 	}
 
+relogin:
 	if err := c.HTTP.Login(c.onLogin); err != nil {
+		if strings.Contains(err.Error(), "timeout") {
+			logex.Info("try to relogin")
+			goto relogin
+		}
 		c.flow.Error(err)
 		return
 	}

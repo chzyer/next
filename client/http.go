@@ -66,8 +66,10 @@ func (c *HTTP) Login(onLogin func(*uc.AuthResponse) error) error {
 	if err != nil {
 		return logex.Trace(err)
 	}
+
 	if ret.DataChannel == -1 {
 		time.Sleep(time.Second)
+		logex.Info("got empty datachannel, try to relogin")
 		return c.Login(onLogin)
 	}
 

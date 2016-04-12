@@ -19,16 +19,17 @@ type Client interface {
 	GetDchan() (*dchan.Client, error)
 	GetRoute() (*route.Route, error)
 	SaveRoute() error
+	Relogin()
 }
 
 type CLI struct {
-	Help       *flagly.CmdHelp  `flagly:"handler"`
-	Ping       *ShellPing       `flagly:"handler"`
-	Route      *ShellRoute      `flagly:"handler"`
-	Dig        *ShellDig        `flagly:"handler"`
-	Controller *ShellController `flagly:"handler"`
-	Debug      *ShellDebug      `flagly:"handler"`
-	Dchan      *Dchan           `flagly:"handler"`
+	Help       *flagly.CmdHelp `flagly:"handler"`
+	Ping       *ShellPing      `flagly:"handler"`
+	Route      *ShellRoute     `flagly:"handler"`
+	Dig        *ShellDig       `flagly:"handler"`
+	Controller *Controller     `flagly:"handler"`
+	Debug      *ShellDebug     `flagly:"handler"`
+	Dchan      *Dchan          `flagly:"handler"`
 }
 
 type ShellDig struct {
