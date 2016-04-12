@@ -1,7 +1,8 @@
 language: go
 go:
-  - GIMME_OS=linux CGO_ENABLED=1
-  - GIMME_OS=darwin CGO_ENABLED=1
+  - 1.4
+  - 1.5
+  - 1.6
 before_install:
   - go get github.com/chzyer/flagly
   - go get github.com/chzyer/flow
@@ -11,7 +12,6 @@ before_install:
   - go get github.com/google/shlex
   - go get gopkg.in/logex.v1
 script:
-  - GOOS=linux CGO_ENABLED=1 go install github.com/chzyer/next/...
-  - GOOS=darwin CGO_ENABLED=1 go install github.com/chzyer/next/...
+  - go install github.com/chzyer/next/...
   - go test -v ./...
   - go vet ./...
