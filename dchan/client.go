@@ -78,6 +78,7 @@ func (c *Client) AddHost(host string, port int) {
 	if added {
 		return
 	}
+	logex.Infof("add new endpoint: %v:%v", host, port)
 
 	slot := Slot{
 		Host: host,
@@ -89,6 +90,10 @@ func (c *Client) AddHost(host string, port int) {
 		case <-c.flow.IsClose():
 		}
 	}
+}
+
+func (c *Client) Ports() []int {
+	return c.ports
 }
 
 func (c *Client) GetRunningChans() int {
@@ -135,10 +140,10 @@ loop:
 		case slot := <-c.connectChan:
 			err := c.MakeNewChannel(slot)
 			if err != nil {
+				logex.Error(err, ",wait 1 second")
 				time.Sleep(time.Second)
 				// send back, TODO: prevent deadlock
 				c.connectChan <- slot
-				logex.Error(err)
 			} else {
 				atomic.AddInt32(&c.runningChans, 1)
 			}
