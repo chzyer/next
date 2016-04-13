@@ -60,7 +60,8 @@ func (c *Client) CloseChannel(src, dst string) error {
 
 func (c *Client) Run() {
 	c.group.Run()
-	go c.loop()
+	go c.sendLoop()
+	go c.connectLoop()
 }
 
 func (c *Client) Close() {
@@ -134,19 +135,41 @@ func (c *Client) MakeNewChannel(slot Slot) error {
 	return nil
 }
 
-func (c *Client) loop() {
+func (c *Client) connectLoop() {
 	c.flow.Add(1)
 	defer c.flow.DoneAndClose()
+
+	getTimeSegment := func() int {
+		return time.Now().Second() / 10
+	}
+
+	generation := 0
+	timeSegment := getTimeSegment()
+	connectCount := 0
+	waitTime := time.Second
 
 loop:
 	for !c.flow.IsClosed() {
 		select {
 		case slot := <-c.connectChan:
-			logex.Infof("prepare to connect to %v:%v", slot.Host, slot.Port)
+			if getTimeSegment() != timeSegment {
+				connectCount = 1
+				generation++
+			} else {
+				connectCount++
+			}
+
+			if connectCount > 5 && generation > 1 {
+				waitTime = 10 * time.Second
+			} else {
+				waitTime = time.Second
+			}
+
+			logex.Debugf("prepare to connect to %v:%v", slot.Host, slot.Port)
 			err := c.MakeNewChannel(slot)
 			if err != nil {
-				logex.Error(err, ",wait 1 second")
-				time.Sleep(time.Second)
+				logex.Error(err, ",wait", waitTime)
+				time.Sleep(waitTime)
 				// send back, TODO: prevent deadlock
 				select {
 				case c.connectChan <- slot:
@@ -157,6 +180,19 @@ loop:
 			} else {
 				atomic.AddInt32(&c.runningChans, 1)
 			}
+		case <-c.flow.IsClose():
+			break loop
+		}
+	}
+}
+
+func (c *Client) sendLoop() {
+	c.flow.Add(1)
+	defer c.flow.DoneAndClose()
+
+loop:
+	for !c.flow.IsClosed() {
+		select {
 		case p := <-c.toDC:
 			logex.Debug(p)
 			c.group.Send(p)
