@@ -30,8 +30,8 @@ type SvrConf struct {
 func NewServer(f *flow.Flow, listen string, ct *clock.Clock, key []byte, cfg *SvrConf) *Server {
 	httpserver := &http.Server{
 		Addr:           listen,
-		ReadTimeout:    10 * time.Second,
-		WriteTimeout:   10 * time.Second,
+		ReadTimeout:    30 * time.Second,
+		WriteTimeout:   30 * time.Second,
 		MaxHeaderBytes: 1 << 10,
 	}
 	httpserver.SetKeepAlivesEnabled(false)
