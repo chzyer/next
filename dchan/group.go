@@ -239,7 +239,6 @@ func (g *Group) GetSpeed() *statistic.SpeedInfo {
 		s.Merge(ch.GetSpeed())
 		return false
 	})
-	logex.Info(s)
 	return &s
 }
 

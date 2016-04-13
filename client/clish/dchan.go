@@ -23,7 +23,7 @@ func (DchanSpeed) FlaglyHandle(c Client) error {
 		return err
 	}
 	info := ch.GetSpeedInfo()
-	return fmt.Errorf("speed: %v/s", info.Current)
+	return fmt.Errorf("upload:   %v/s\ndownload: %v/s", info.Upload, info.Download)
 }
 
 type DchanUseful struct{}

@@ -20,24 +20,29 @@ type Unit int64
 type Size Unit
 
 func (u Unit) String() string {
-	var val float64
+	val := float64(u)
 	var unit string
-	if u > PB {
-		u /= PB
+	if u >= PB {
+		val /= float64(PB)
 		unit = "PB"
 	} else if u > GB {
-		u /= GB
+		val /= float64(GB)
 		unit = "GB"
 	} else if u > MB {
-		u /= MB
+		val /= float64(MB)
 		unit = "MB"
 	} else if u > KB {
-		u /= KB
+		val /= float64(KB)
 		unit = "KB"
 	} else {
 		unit = "B"
 	}
-	return fmt.Sprintf("%.2f%v", val, unit)
+	n := fmt.Sprintf("%.2f", val)
+	n = strings.TrimRight(n, "0.")
+	if n == "" {
+		n = "0"
+	}
+	return n + unit
 }
 
 func (u *Unit) Add(n Unit) {

@@ -60,7 +60,7 @@ func (c *Channel) Run() {
 
 func (c *Channel) rawWrite(p *packet.Packet) error {
 	n, err := c.conn.Write(p.Marshal(c.session))
-	c.speed.Submit(n)
+	c.speed.Upload(n)
 	return err
 }
 
@@ -108,6 +108,7 @@ loop:
 			}
 			break
 		}
+		c.speed.Download(p.Size())
 		switch p.Type {
 		case packet.HEARTBEAT:
 			select {

@@ -29,6 +29,8 @@ type Packet struct {
 	IV      *IV // can nil
 	Type    Type
 	Payload []byte
+
+	size int
 }
 
 func New(payload []byte, t Type) *Packet {
@@ -37,6 +39,10 @@ func New(payload []byte, t Type) *Packet {
 		panic(err)
 	}
 	return p
+}
+
+func (p *Packet) Size() int {
+	return p.size
 }
 
 func (p *Packet) Reply(payload []byte) *Packet {
@@ -213,6 +219,7 @@ func ReadWithIV(s *SessionIV, iv *IV, r io.Reader) (*Packet, error) {
 		IV:      iv,
 		Payload: payload,
 		Type:    t,
+		size:    int(length) + 24, // body + header
 	}
 
 	return p, nil

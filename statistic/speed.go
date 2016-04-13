@@ -9,16 +9,19 @@ import (
 )
 
 type SpeedInfo struct {
-	Current util.Unit
+	Download util.Unit
+	Upload   util.Unit
 }
 
 func (s *SpeedInfo) Merge(si *SpeedInfo) *SpeedInfo {
-	s.Current += si.Current
+	s.Download += si.Download
+	s.Upload += si.Upload
 	return s
 }
 
 type Speed struct {
-	total      int64
+	upload     int64
+	download   int64
 	submitTime int64
 	sync.Mutex
 }
@@ -28,7 +31,8 @@ func NewSpeed() *Speed {
 }
 
 func (s *Speed) updateLocked(n int64) {
-	s.total = 0
+	atomic.StoreInt64(&s.upload, 0)
+	atomic.StoreInt64(&s.download, 0)
 	s.submitTime = n
 }
 
@@ -43,14 +47,20 @@ func (s *Speed) checkOutdated() {
 	}
 }
 
-func (s *Speed) Submit(n int) {
+func (s *Speed) Upload(n int) {
 	s.checkOutdated()
-	atomic.AddInt64(&s.total, int64(n))
+	atomic.AddInt64(&s.upload, int64(n))
+}
+
+func (s *Speed) Download(n int) {
+	s.checkOutdated()
+	atomic.AddInt64(&s.download, int64(n))
 }
 
 func (s *Speed) GetSpeed() *SpeedInfo {
 	s.checkOutdated()
 	return &SpeedInfo{
-		Current: util.Unit(atomic.LoadInt64(&s.total)),
+		Download: util.Unit(atomic.LoadInt64(&s.download)),
+		Upload:   util.Unit(atomic.LoadInt64(&s.upload)),
 	}
 }
