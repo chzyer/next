@@ -12,6 +12,18 @@ type Dchan struct {
 	Useful *DchanUseful `flagly:"handler"`
 	Close  *DchanClose  `flagly:"handler"`
 	List   *DchanList   `flagly:"handler"`
+	Speed  *DchanSpeed  `flagly:"handler"`
+}
+
+type DchanSpeed struct{}
+
+func (DchanSpeed) FlaglyHandle(c Client) error {
+	ch, err := c.GetDchan()
+	if err != nil {
+		return err
+	}
+	info := ch.GetSpeedInfo()
+	return fmt.Errorf("speed: %v/s", info.Current)
 }
 
 type DchanUseful struct{}
@@ -19,7 +31,7 @@ type DchanUseful struct{}
 func (DchanUseful) FlaglyHandle(c Client) error {
 	ch, err := c.GetDchan()
 	if err != nil {
-		return fmt.Errorf("not ready")
+		return err
 	}
 	chs := ch.GetUsefulChan()
 	buf := bytes.NewBuffer(nil)

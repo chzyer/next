@@ -3,6 +3,7 @@ package util
 import (
 	"fmt"
 	"strings"
+	"sync/atomic"
 
 	"strconv"
 )
@@ -15,10 +16,33 @@ const (
 	PB
 )
 
-var unitmap = map[string]int64{}
-
 type Unit int64
 type Size Unit
+
+func (u Unit) String() string {
+	var val float64
+	var unit string
+	if u > PB {
+		u /= PB
+		unit = "PB"
+	} else if u > GB {
+		u /= GB
+		unit = "GB"
+	} else if u > MB {
+		u /= MB
+		unit = "MB"
+	} else if u > KB {
+		u /= KB
+		unit = "KB"
+	} else {
+		unit = "B"
+	}
+	return fmt.Sprintf("%.2f%v", val, unit)
+}
+
+func (u *Unit) Add(n Unit) {
+	atomic.AddInt64((*int64)(u), int64(n))
+}
 
 func ParseUnit(s string) (Unit, error) {
 	s = strings.ToLower(s)

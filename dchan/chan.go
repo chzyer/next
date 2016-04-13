@@ -11,6 +11,7 @@ import (
 
 	"github.com/chzyer/flow"
 	"github.com/chzyer/next/packet"
+	"github.com/chzyer/next/statistic"
 )
 
 type Channel struct {
@@ -20,6 +21,7 @@ type Channel struct {
 
 	// private
 	heartBeat *packet.HeartBeatStage
+	speed     *statistic.Speed
 
 	// runtime
 	exitError error
@@ -33,12 +35,17 @@ func NewChannel(f *flow.Flow, session *packet.SessionIV, conn net.Conn, out chan
 		session: session,
 		conn:    conn,
 
-		in:  make(chan *packet.Packet, 8),
-		out: out,
+		speed: statistic.NewSpeed(),
+		in:    make(chan *packet.Packet, 8),
+		out:   out,
 	}
 	f.ForkTo(&ch.flow, ch.Close)
 	ch.heartBeat = packet.NewHeartBeatStage(ch.flow, 5*time.Second, ch)
 	return ch
+}
+
+func (c *Channel) GetSpeed() *statistic.SpeedInfo {
+	return c.speed.GetSpeed()
 }
 
 func (c *Channel) HeartBeatClean(err error) {
@@ -52,7 +59,8 @@ func (c *Channel) Run() {
 }
 
 func (c *Channel) rawWrite(p *packet.Packet) error {
-	_, err := c.conn.Write(p.Marshal(c.session))
+	n, err := c.conn.Write(p.Marshal(c.session))
+	c.speed.Submit(n)
 	return err
 }
 

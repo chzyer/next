@@ -13,6 +13,7 @@ import (
 
 	"github.com/chzyer/flow"
 	"github.com/chzyer/next/packet"
+	"github.com/chzyer/next/statistic"
 	"github.com/chzyer/next/util"
 )
 
@@ -230,6 +231,16 @@ func (g *Group) AddWithAutoRemove(c *Channel) {
 		g.chanListGuard.Unlock()
 	})
 
+}
+
+func (g *Group) GetSpeed() *statistic.SpeedInfo {
+	var s statistic.SpeedInfo
+	g.findChannel(func(ch *Channel) bool {
+		s.Merge(ch.GetSpeed())
+		return false
+	})
+	logex.Info(s)
+	return &s
 }
 
 func (g *Group) makeSelectCaseLocked() {

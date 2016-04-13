@@ -10,6 +10,7 @@ import (
 	"github.com/chzyer/flow"
 	"github.com/chzyer/next/datachannel"
 	"github.com/chzyer/next/packet"
+	"github.com/chzyer/next/statistic"
 	"github.com/chzyer/next/util"
 	"gopkg.in/logex.v1"
 )
@@ -133,6 +134,10 @@ func (c *Client) MakeNewChannel(slot Slot) error {
 	c.group.AddWithAutoRemove(ch)
 	ch.Run()
 	return nil
+}
+
+func (c *Client) GetSpeedInfo() *statistic.SpeedInfo {
+	return c.group.GetSpeed()
 }
 
 func (c *Client) connectLoop() {
