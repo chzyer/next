@@ -92,6 +92,7 @@ func (c *Channel) readLoop() {
 	buf := bufio.NewReader(c.conn)
 loop:
 	for !c.flow.IsClosed() {
+		c.conn.SetReadDeadline(time.Now().Add(10 * time.Second))
 		p, err := packet.Read(c.session, buf)
 		if err != nil {
 			if !strings.Contains(err.Error(), "closed") {
@@ -140,8 +141,8 @@ func (c *Channel) Close() {
 	} else {
 		logex.Info(c.Name(), "exit manually")
 	}
-	c.flow.Close()
 	c.conn.Close()
+	c.flow.Close()
 }
 
 func (c *Channel) GetUserId() int {
