@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/chzyer/flow"
+	"github.com/chzyer/next/util"
 	"gopkg.in/logex.v1"
 )
 
@@ -25,15 +26,8 @@ func NewServer(f *flow.Flow, d SvrDelegate) *Server {
 }
 
 func (m *Server) GetDataChannel() int {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
-
-	for _, ln := range m.listeners {
-		if ln != nil {
-			return ln.GetPort()
-		}
-	}
-	return -1
+	ports := m.GetAllDataChannel()
+	return util.RandChoiseInt(ports)
 }
 
 func (m *Server) GetAllDataChannel() []int {
