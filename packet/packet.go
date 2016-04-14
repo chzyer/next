@@ -133,6 +133,7 @@ func (p *Packet) Marshal(s *SessionIV) []byte {
 		}
 	}
 	buffer := make([]byte, 2+randLength+totalLength)
+	p.size = len(buffer)
 
 	// 5.3, n + rand(n), 26 = header
 	randBuffer := buffer[26 : 26+2+randLength]
@@ -219,7 +220,7 @@ func ReadWithIV(s *SessionIV, iv *IV, r io.Reader) (*Packet, error) {
 		IV:      iv,
 		Payload: payload,
 		Type:    t,
-		size:    int(length) + 24, // body + header
+		size:    int(length) + 26, // body + header
 	}
 
 	return p, nil
