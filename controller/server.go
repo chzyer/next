@@ -34,7 +34,8 @@ func (s *Server) NotifyDataChannel(port []int) {
 	if err != nil {
 		panic(err)
 	}
-	s.SendTimeout(packet.New(ret, packet.NEWDC), 10*time.Second)
+	// TODO: figure out why it is blocking
+	s.SendTimeout(packet.New(ret, packet.NEWDC), 5*time.Second)
 }
 
 func (s *Server) loop() {

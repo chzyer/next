@@ -43,7 +43,7 @@ func New(cfg *Config, f *flow.Flow) *Client {
 		HTTP:          NewHTTP(cfg.Host, cfg.UserName, cfg.Password, []byte(cfg.AesKey)),
 		needLoginChan: make(chan struct{}, 1),
 	}
-	http.DefaultClient.Timeout = 5 * time.Second
+	http.DefaultClient.Timeout = 10 * time.Second
 	return cli
 }
 
