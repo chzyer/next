@@ -150,13 +150,18 @@ func (g *Group) findUsefulLocked() []int {
 			Idx:     idx,
 			Latency: latency,
 		})
+		idx++
+
+		// channel which is not heartbeat yet
+		if latency == 0 {
+			continue
+		}
 		if minLatency > latency || minLatency == 0 {
 			minLatency = latency
 		}
 		if maxLatency < latency {
 			maxLatency = latency
 		}
-		idx++
 	}
 
 	ret := make([]int, 0, len(infos))
