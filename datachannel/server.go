@@ -58,6 +58,7 @@ loop:
 			case <-m.flow.IsClose():
 				break loop
 			case <-m.onListenerExit:
+				started--
 			}
 		}
 	}
