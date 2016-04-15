@@ -44,19 +44,18 @@ func (DchanUseful) FlaglyHandle(c Client) error {
 }
 
 type DchanClose struct {
-	Src string `type:"[0]"`
-	Dst string `type:"[1]"`
+	Name string `type:"[0]"`
 }
 
 func (d *DchanClose) FlaglyHandle(c Client) error {
-	if d.Src == "" || d.Dst == "" {
-		return flagly.Error("src/dst is both required")
+	if d.Name == "" {
+		return flagly.Error("name is both required")
 	}
 	ch, err := c.GetDchan()
 	if err != nil {
 		return err
 	}
-	return ch.CloseChannel(d.Src, d.Dst)
+	return ch.CloseChannel(d.Name)
 }
 
 type DchanList struct{}

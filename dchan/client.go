@@ -55,8 +55,8 @@ func NewClient(f *flow.Flow, s *packet.SessionIV,
 	return cli
 }
 
-func (c *Client) CloseChannel(src, dst string) error {
-	return c.group.CloseChannel(src, dst)
+func (c *Client) CloseChannel(name string) error {
+	return c.group.CloseChannel(name)
 }
 
 func (c *Client) Run() {
@@ -124,7 +124,7 @@ func (c *Client) MakeNewChannel(slot Slot) error {
 		return logex.Trace(err)
 	}
 	session := c.session.Clone(slot.Port)
-	ch := NewChannel(c.flow, session, conn, c.fromDC)
+	ch := NewTcpChan(c.flow, session, conn, c.fromDC)
 	if err := datachannel.ClientCheckAuth(conn, session); err != nil {
 		return logex.Trace(err)
 	}
@@ -207,7 +207,7 @@ loop:
 	}
 }
 
-func (c *Client) GetUsefulChan() []*Channel {
+func (c *Client) GetUsefulChan() []Channel {
 	return c.group.GetUsefulChan()
 }
 

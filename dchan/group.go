@@ -49,12 +49,12 @@ func NewGroup(f *flow.Flow) *Group {
 	return g
 }
 
-func (g *Group) findChannel(f func(*Channel) bool) *Channel {
-	var ret *Channel
+func (g *Group) findChannel(f func(Channel) bool) Channel {
+	var ret Channel
 	g.chanListGuard.RLock()
 	for elem := g.chanList.Front(); elem != nil; elem = elem.Next() {
-		if f(elem.Value.(*Channel)) {
-			ret = elem.Value.(*Channel)
+		if f(elem.Value.(Channel)) {
+			ret = elem.Value.(Channel)
 			break
 		}
 	}
@@ -62,9 +62,9 @@ func (g *Group) findChannel(f func(*Channel) bool) *Channel {
 	return ret
 }
 
-func (g *Group) CloseChannel(src, dst string) error {
-	ch := g.findChannel(func(c *Channel) bool {
-		return c.Src().String() == src && c.Dst().String() == dst
+func (g *Group) CloseChannel(name string) error {
+	ch := g.findChannel(func(c Channel) bool {
+		return c.Name() == name
 	})
 	if ch == nil {
 		return fmt.Errorf("channel is not found")
@@ -80,16 +80,16 @@ func (g *Group) ChannelCount() int {
 	return count
 }
 
-func (g *Group) GetUsefulChan() []*Channel {
+func (g *Group) GetUsefulChan() []Channel {
 	g.chanListGuard.RLock()
 	defer g.chanListGuard.RUnlock()
 
-	var ret []*Channel
+	var ret []Channel
 	usefuls := g.GetUseful()
 	idx := 0
 	for elem := g.chanList.Front(); elem != nil; elem = elem.Next() {
 		if util.InInts(idx, usefuls) {
-			ret = append(ret, elem.Value.(*Channel))
+			ret = append(ret, elem.Value.(Channel))
 		}
 		idx++
 	}
@@ -98,7 +98,7 @@ func (g *Group) GetUsefulChan() []*Channel {
 
 func (g *Group) GetStatsInfo() string {
 	buf := bytes.NewBuffer(nil)
-	g.findChannel(func(ch *Channel) bool {
+	g.findChannel(func(ch Channel) bool {
 		buf.WriteString(fmt.Sprintf("%v: %v\n",
 			ch.Name(), ch.GetStat().String(),
 		))
@@ -141,7 +141,7 @@ func (g *Group) findUsefulLocked() []int {
 	infos := make([]*latencies, 0, g.chanList.Len())
 	var minLatency, maxLatency time.Duration
 	for elem := g.chanList.Front(); elem != nil; elem = elem.Next() {
-		ch := elem.Value.(*Channel)
+		ch := elem.Value.(Channel)
 		latency, lastCommit := ch.Latency()
 		if lastCommit >= 5*time.Second {
 			continue
@@ -219,7 +219,7 @@ resend:
 	}
 }
 
-func (g *Group) AddWithAutoRemove(c *Channel) {
+func (g *Group) AddWithAutoRemove(c Channel) {
 	logex.Info("new channel:", c.Name())
 	g.chanListGuard.Lock()
 	elem := g.chanList.PushFront(c)
@@ -240,7 +240,7 @@ func (g *Group) AddWithAutoRemove(c *Channel) {
 
 func (g *Group) GetSpeed() *statistic.SpeedInfo {
 	var s statistic.SpeedInfo
-	g.findChannel(func(ch *Channel) bool {
+	g.findChannel(func(ch Channel) bool {
 		s.Merge(ch.GetSpeed())
 		return false
 	})
@@ -253,7 +253,7 @@ func (g *Group) makeSelectCaseLocked() {
 	for elem := g.chanList.Front(); elem != nil; elem = elem.Next() {
 		g.selectCase[idx] = reflect.SelectCase{
 			Dir:  reflect.SelectSend,
-			Chan: reflect.ValueOf(elem.Value.(*Channel).ChanWrite()),
+			Chan: reflect.ValueOf(elem.Value.(Channel).ChanWrite()),
 		}
 		idx++
 	}
