@@ -122,13 +122,13 @@ loop:
 					default:
 					}
 				}
-			} else {
-				// println("I need Reply to:", p.IV.ReqId)
-				select {
-				case c.out <- p:
-				case <-c.flow.IsClose():
-					break loop
-				}
+			}
+
+			// println("I need Reply to:", p.IV.ReqId)
+			select {
+			case c.out <- p:
+			case <-c.flow.IsClose():
+				break loop
 			}
 		}
 	}

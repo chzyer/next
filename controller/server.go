@@ -2,7 +2,6 @@ package controller
 
 import (
 	"encoding/json"
-	"time"
 
 	"github.com/chzyer/flow"
 	"github.com/chzyer/next/packet"
@@ -14,6 +13,7 @@ type Server struct {
 	flow  *flow.Flow
 	user  *uc.User
 	toTun chan<- []byte
+	ports []int
 }
 
 func NewServer(f *flow.Flow, u *uc.User, toTun chan<- []byte) *Server {
@@ -30,12 +30,8 @@ func NewServer(f *flow.Flow, u *uc.User, toTun chan<- []byte) *Server {
 }
 
 func (s *Server) NotifyDataChannel(port []int) {
-	ret, err := json.Marshal(port)
-	if err != nil {
-		panic(err)
-	}
-	// TODO: figure out why it is blocking
-	s.SendTimeout(packet.New(ret, packet.NEWDC), 5*time.Second)
+	s.ports = port
+	return
 }
 
 func (s *Server) loop() {
@@ -48,6 +44,10 @@ loop:
 		select {
 		case p := <-out:
 			switch p.Type {
+			case packet.NEWDC:
+				ret, _ := json.Marshal(s.ports)
+				s.Send(p.Reply(ret))
+				continue
 			case packet.DATA:
 				select {
 				case s.toTun <- p.Data():
@@ -55,7 +55,9 @@ loop:
 					break loop
 				}
 			}
-			s.Send(p.Reply(nil))
+			if p.Type.IsReq() {
+				s.Send(p.Reply(nil))
+			}
 		case <-s.flow.IsClose():
 			break loop
 		}

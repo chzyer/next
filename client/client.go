@@ -116,21 +116,31 @@ func (c *Client) initTun(remoteCfg *uc.AuthResponse) (in, out chan []byte, err e
 	return in, out, nil
 }
 
+func (c *Client) onRelogin(remoteCfg *uc.AuthResponse) error {
+	if err := c.initDataChannel(remoteCfg); err != nil {
+		return logex.Trace(err)
+	}
+	c.ctl.RequestNewDC()
+	return nil
+}
+
 func (c *Client) onLogin(remoteCfg *uc.AuthResponse) error {
+	if c.tun == nil {
+		return c.onFirstLogin(remoteCfg)
+	} else {
+		return c.onRelogin(remoteCfg)
+	}
+}
+
+func (c *Client) onFirstLogin(remoteCfg *uc.AuthResponse) error {
 	logex.Pretty(remoteCfg)
 
-	err := c.initDataChannel(remoteCfg)
+	tunIn, tunOut, err := c.initTun(remoteCfg)
 	if err != nil {
 		return logex.Trace(err)
 	}
 
-	if c.tun != nil {
-		c.tun.ConfigUpdate(remoteCfg)
-		return nil
-	}
-
-	tunIn, tunOut, err := c.initTun(remoteCfg)
-	if err != nil {
+	if err := c.initDataChannel(remoteCfg); err != nil {
 		return logex.Trace(err)
 	}
 
@@ -169,6 +179,7 @@ func (c *Client) initRouteTable() {
 
 func (c *Client) initController(toDC chan<- *packet.Packet, fromDC <-chan *packet.Packet, toTun chan<- []byte) error {
 	c.ctl = controller.NewClient(c.flow, c, toDC, fromDC, toTun)
+	c.ctl.RequestNewDC()
 	return nil
 }
 

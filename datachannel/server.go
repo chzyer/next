@@ -27,6 +27,9 @@ func NewServer(f *flow.Flow, d SvrDelegate) *Server {
 
 func (m *Server) GetDataChannel() int {
 	ports := m.GetAllDataChannel()
+	if len(ports) == 0 {
+		return -1
+	}
 	return util.RandChoiseInt(ports)
 }
 

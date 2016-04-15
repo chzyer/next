@@ -16,8 +16,8 @@ const (
 	HEARTBEAT   // payload: nil
 	HEARTBEAT_R // payload: nil
 
-	NEWDC   // payload: json([port])
-	NEWDC_R // payload: nil
+	NEWDC   // payload: nil
+	NEWDC_R // payload: json([port])
 
 	// send bytes to remote
 	SPEED   // payload: [4096]bytes in random

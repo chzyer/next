@@ -66,7 +66,11 @@ func (c *Client) Run() {
 }
 
 func (c *Client) Close() {
+	if !c.flow.MarkExit() {
+		return
+	}
 	c.flow.Close()
+	logex.Info("closed")
 }
 
 // AddHost will exclude endpoint which is already exists
@@ -103,13 +107,20 @@ func (c *Client) GetRunningChans() int {
 	return int(atomic.LoadInt32(&c.runningChans))
 }
 
+func (c *Client) callOnAllBackoff() {
+	if c.flow.IsExit() {
+		return
+	}
+	if c.onAllBackoff != nil {
+		go c.onAllBackoff()
+	}
+}
+
 // used by MakeNewChannel
 func (c *Client) onChanExit(slot Slot) {
 	newRunning := atomic.AddInt32(&c.runningChans, -1)
 	if newRunning == 0 {
-		if c.onAllBackoff != nil {
-			go c.onAllBackoff()
-		}
+		c.callOnAllBackoff()
 	}
 	select {
 	case c.connectChan <- slot:
@@ -179,6 +190,10 @@ loop:
 				select {
 				case c.connectChan <- slot:
 					logex.Info("resend back to channel")
+					if atomic.LoadInt32(&c.runningChans) == 0 {
+						c.callOnAllBackoff()
+						continue
+					}
 				case <-c.flow.IsClose():
 					break loop
 				}

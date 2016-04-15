@@ -9,6 +9,7 @@ import (
 
 var (
 	ErrWrongUserPassword = logex.Define("wrong username or password")
+	ErrNotReady          = logex.Define("not ready")
 )
 
 func (h *HttpApi) Auth(req *mchan.Req) interface{} {
@@ -26,6 +27,11 @@ func (h *HttpApi) Auth(req *mchan.Req) interface{} {
 	if u == nil {
 		return ErrWrongUserPassword
 	}
+
+	if h.delegate.GetDataChannel() == -1 {
+		return ErrNotReady
+	}
+
 	if u.Net == nil {
 		u.Net = h.delegate.AllocIP()
 	}

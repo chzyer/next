@@ -28,6 +28,10 @@ func NewClient(f *flow.Flow, delegate CliDelegate, toDC chan<- *packet.Packet, f
 	return cli
 }
 
+func (c *Client) RequestNewDC() {
+	c.Send(packet.New(nil, packet.NEWDC))
+}
+
 func (c *Client) loop() {
 	c.flow.Add(1)
 	defer c.flow.DoneAndClose()
@@ -43,14 +47,16 @@ loop:
 				case <-c.flow.IsClose():
 					break loop
 				}
-			case packet.NEWDC:
+			case packet.NEWDC_R:
 				var port []int
 				json.Unmarshal(pRecv.Payload, &port)
 				if len(port) > 0 {
 					c.delegate.OnNewDC(port)
 				}
 			}
-			c.Send(pRecv.Reply(nil))
+			if pRecv.Type.IsReq() {
+				c.Send(pRecv.Reply(nil))
+			}
 		case <-c.flow.IsClose():
 			break loop
 		}
