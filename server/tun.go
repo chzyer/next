@@ -52,10 +52,11 @@ loop:
 	for {
 		select {
 		case data := <-in:
-			_, err := t.tun.Write(data)
+			n, err := t.tun.Write(data)
 			if err != nil {
 				break loop
 			}
+			logex.Debug("tun write:", n)
 		case <-t.flow.IsClose():
 			break loop
 		}
@@ -71,6 +72,7 @@ loop:
 		if err != nil {
 			break
 		}
+		logex.Debug("tun read:", n)
 		b := make([]byte, n)
 		copy(b, buf[:n])
 		select {
