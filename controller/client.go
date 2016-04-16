@@ -2,6 +2,7 @@ package controller
 
 import (
 	"encoding/json"
+	"time"
 
 	"github.com/chzyer/flow"
 	"github.com/chzyer/next/packet"
@@ -29,7 +30,10 @@ func NewClient(f *flow.Flow, delegate CliDelegate, toDC chan<- *packet.Packet, f
 }
 
 func (c *Client) RequestNewDC() {
-	c.Send(packet.New(nil, packet.NEWDC))
+	ok := c.SendTimeout(packet.New(nil, packet.NEWDC), time.Second)
+	if !ok {
+		// fail
+	}
 }
 
 func (c *Client) loop() {

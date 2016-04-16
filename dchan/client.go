@@ -3,6 +3,7 @@ package dchan
 import (
 	"fmt"
 	"net"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -24,6 +25,15 @@ type Slot struct {
 	Port uint16
 }
 
+func (s Slot) String() string {
+	return fmt.Sprintf("%v:%v", s.Host, s.Port)
+}
+
+type ClientDelegate interface {
+	OnAllBackoff(*Client)
+	OnLinkRefuesd()
+}
+
 type Client struct {
 	flow         *flow.Flow
 	group        *Group
@@ -31,20 +41,22 @@ type Client struct {
 	mutex        sync.Mutex
 	runningChans int32
 
-	ports        []int
-	toDC         <-chan *packet.Packet
-	fromDC       chan<- *packet.Packet
-	connectChan  chan Slot
-	onAllBackoff func()
+	delegate ClientDelegate
+
+	ports       []int
+	toDC        <-chan *packet.Packet
+	fromDC      chan<- *packet.Packet
+	connectChan chan Slot
 }
 
 // out is which datachannel can write for
 // all of channel share on fromDC, and have their owned toDC
 // client receive all packet from toDC and try to send them
-func NewClient(f *flow.Flow, s *packet.SessionIV,
+func NewClient(f *flow.Flow, s *packet.SessionIV, delegate ClientDelegate,
 	toDC <-chan *packet.Packet, fromDC chan<- *packet.Packet) *Client {
 
 	cli := &Client{
+		delegate:    delegate,
 		connectChan: make(chan Slot, 1024),
 		session:     s,
 		toDC:        toDC,
@@ -111,9 +123,7 @@ func (c *Client) callOnAllBackoff() {
 	if c.flow.IsExit() {
 		return
 	}
-	if c.onAllBackoff != nil {
-		go c.onAllBackoff()
-	}
+	c.delegate.OnAllBackoff(c)
 }
 
 // used by MakeNewChannel
@@ -184,12 +194,16 @@ loop:
 			logex.Debugf("prepare to connect to %v:%v", slot.Host, slot.Port)
 			err := c.MakeNewChannel(slot)
 			if err != nil {
+				if strings.Contains(err.Error(), "connection refused") {
+					logex.Error("connect to", slot, "refused, remove it")
+					c.delegate.OnLinkRefuesd()
+					continue
+				}
 				logex.Error(err, ",wait", waitTime)
 				time.Sleep(waitTime)
 				// send back, TODO: prevent deadlock
 				select {
 				case c.connectChan <- slot:
-					logex.Info("resend back to channel")
 					if atomic.LoadInt32(&c.runningChans) == 0 {
 						c.callOnAllBackoff()
 						continue
@@ -234,8 +248,4 @@ func (c *Client) UpdateRemoteAddrs(host string, ports []int) {
 	for _, p := range ports {
 		c.AddHost(host, p)
 	}
-}
-
-func (c *Client) SetOnAllBackoff(f func()) {
-	c.onAllBackoff = f
 }

@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"fmt"
 	"sync/atomic"
 	"time"
 
@@ -8,6 +9,10 @@ import (
 
 	"github.com/chzyer/flow"
 	"github.com/chzyer/next/packet"
+)
+
+var (
+	ErrTimeout = fmt.Errorf("timed out")
 )
 
 type Controller struct {
@@ -67,7 +72,7 @@ func NewRequest(p *packet.Packet, reply bool) *Request {
 	return req
 }
 
-func (c *Controller) send(req *Request) *packet.Packet {
+func (c *Controller) send(req *Request) (*packet.Packet, error) {
 	var timeout <-chan time.Time
 	if req.Timeout > 0 {
 		timeout = time.After(req.Timeout)
@@ -78,26 +83,28 @@ func (c *Controller) send(req *Request) *packet.Packet {
 		if req.Reply != nil {
 			select {
 			case rep := <-req.Reply:
-				return rep
+				return rep, nil
 			case <-c.flow.IsClose():
 			}
 		}
 	case <-timeout:
-		logex.Warn("send timeout: ", req.Packet.Type.String())
+		return nil, ErrTimeout
 	case <-c.flow.IsClose():
 	}
-	return nil
+	return nil, nil
 }
 
 func (c *Controller) Request(req *packet.Packet) *packet.Packet {
-	return c.send(&Request{
+	ret, _ := c.send(&Request{
 		Packet: req,
 		Reply:  make(chan *packet.Packet),
 	})
+	return ret
 }
 
-func (c *Controller) SendTimeout(req *packet.Packet, timeout time.Duration) {
-	c.send(&Request{Packet: req, Timeout: timeout})
+func (c *Controller) SendTimeout(req *packet.Packet, timeout time.Duration) bool {
+	_, err := c.send(&Request{Packet: req, Timeout: timeout})
+	return err != ErrTimeout
 }
 
 func (c *Controller) Send(req *packet.Packet) {

@@ -137,6 +137,10 @@ func (s *Server) GetUserToken(id int) string {
 	return u.Token
 }
 
+func (s *Server) OnDChanUpdate(port []int) {
+	s.controllerGroup.OnDchanPortUpdate(port)
+}
+
 func (s *Server) Close() {
 	if s.shell != nil {
 		s.shell.Close()

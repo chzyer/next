@@ -15,6 +15,7 @@ var (
 )
 
 type SvrDelegate interface {
+	OnDChanUpdate([]int)
 	GetUserToken(id int) string
 	GetUserChannelFromDataChannel(id int) (
 		fromUser <-chan *packet.Packet, toUser chan<- *packet.Packet, err error)

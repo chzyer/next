@@ -56,6 +56,7 @@ loop:
 		if started < n {
 			m.AddChannelListener()
 			started++
+			m.delegate.OnDChanUpdate(m.GetAllDataChannel())
 		} else {
 			select {
 			case <-m.flow.IsClose():

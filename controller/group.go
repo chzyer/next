@@ -53,6 +53,14 @@ loop:
 	}
 }
 
+func (c *Group) OnDchanPortUpdate(port []int) {
+	c.mutex.RLock()
+	for _, ctl := range c.online {
+		ctl.NotifyDataChannel(port)
+	}
+	c.mutex.RUnlock()
+}
+
 func (c *Group) UserLogin(u *uc.User) *Server {
 	logex.Debug("controller.onUserLogin")
 	c.mutex.Lock()

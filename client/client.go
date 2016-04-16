@@ -86,22 +86,20 @@ func (c *Client) initDataChannel(remoteCfg *uc.AuthResponse) (err error) {
 		c.dcCli = nil
 	}
 
-	dcCli := dchan.NewClient(c.flow, session, c.dcIn, c.dcOut)
+	delegate := &DchanDelegate{c}
+	dcCli := dchan.NewClient(c.flow, session, delegate, c.dcIn, c.dcOut)
 	dcCli.AddHost(c.cfg.GetHostName(), port)
-	dcCli.SetOnAllBackoff(func() {
-		logex.Info("all dchan is backoff")
-		dcCli.Close()
-		logex.Info("send needLogin chan")
-		select {
-		case c.needLoginChan <- struct{}{}:
-			logex.Info("send needLogin chan success")
-		case <-c.flow.IsClose():
-		}
-	})
 	c.dcCli = dcCli
 	dcCli.Run()
 	logex.Info("datachannel inited:", dcCli.Ports())
 	return nil
+}
+
+func (c *Client) NeedLogin() {
+	select {
+	case c.needLoginChan <- struct{}{}:
+	case <-c.flow.IsClose():
+	}
 }
 
 func (c *Client) initTun(remoteCfg *uc.AuthResponse) (in, out chan []byte, err error) {
