@@ -5,7 +5,7 @@ import (
 
 	"github.com/chzyer/flow"
 	"github.com/chzyer/next/controller"
-	"github.com/chzyer/next/datachannel"
+	"github.com/chzyer/next/dchan"
 	"github.com/chzyer/next/ip"
 	"github.com/chzyer/next/mchan"
 	"github.com/chzyer/next/packet"
@@ -24,7 +24,7 @@ type Server struct {
 	tun   *Tun
 
 	controllerGroup *controller.Group
-	dcs             *datachannel.Server
+	dcs             *dchan.Server
 }
 
 func New(cfg *Config, f *flow.Flow) *Server {
@@ -72,8 +72,8 @@ func (s *Server) runHttp() {
 }
 
 func (s *Server) loadDataChannel() {
-	s.dcs = datachannel.NewServer(s.flow, s)
-	s.dcs.Start(4)
+	s.dcs = dchan.NewServer(s.flow, s)
+	go s.dcs.Run(4)
 }
 
 func (s *Server) initAndRunTun() bool {
@@ -99,7 +99,7 @@ func (s *Server) Run() {
 	s.initControllerGroup() // after tun
 	go s.runHttp()
 	go s.runShell()
-	go s.loadDataChannel()
+	s.loadDataChannel()
 }
 
 // -----------------------------------------------------------------------------
