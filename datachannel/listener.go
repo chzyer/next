@@ -16,7 +16,6 @@ type Listener struct {
 	flow     *flow.Flow
 	delegate SvrDelegate
 	port     int
-	closed   bool
 	onClose  func()
 }
 
@@ -81,10 +80,10 @@ func (d *Listener) Serve() {
 }
 
 func (d *Listener) Close() {
-	if d.closed {
+	if !d.flow.MarkExit() {
 		return
 	}
-	d.closed = true
+	logex.Info("listener:", d.port, "closed")
 	d.ln.Close()
 	d.flow.Close()
 	d.onClose()
