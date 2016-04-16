@@ -31,7 +31,7 @@ func (s Slot) String() string {
 
 type ClientDelegate interface {
 	OnAllBackoff(*Client)
-	OnLinkRefuesd()
+	OnLinkRefused()
 }
 
 type Client struct {
@@ -119,6 +119,14 @@ func (c *Client) GetRunningChans() int {
 	return int(atomic.LoadInt32(&c.runningChans))
 }
 
+func (c *Client) tryToCallBackoff() bool {
+	if atomic.LoadInt32(&c.runningChans) == 0 {
+		c.callOnAllBackoff()
+		return true
+	}
+	return false
+}
+
 func (c *Client) callOnAllBackoff() {
 	if c.flow.IsExit() {
 		return
@@ -196,7 +204,8 @@ loop:
 			if err != nil {
 				if strings.Contains(err.Error(), "connection refused") {
 					logex.Error("connect to", slot, "refused, remove it")
-					c.delegate.OnLinkRefuesd()
+					c.delegate.OnLinkRefused()
+					c.tryToCallBackoff()
 					continue
 				}
 				logex.Error(err, ",wait", waitTime)
@@ -204,8 +213,7 @@ loop:
 				// send back, TODO: prevent deadlock
 				select {
 				case c.connectChan <- slot:
-					if atomic.LoadInt32(&c.runningChans) == 0 {
-						c.callOnAllBackoff()
+					if c.tryToCallBackoff() {
 						continue
 					}
 				case <-c.flow.IsClose():

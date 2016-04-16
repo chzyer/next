@@ -15,6 +15,6 @@ func (d *DchanDelegate) OnAllBackoff(cli *dchan.Client) {
 	d.c.NeedLogin()
 }
 
-func (d *DchanDelegate) OnLinkRefuesd() {
+func (d *DchanDelegate) OnLinkRefused() {
 	d.c.ctl.RequestNewDC()
 }
