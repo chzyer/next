@@ -2,9 +2,10 @@ package clish
 
 import (
 	"fmt"
-	"runtime"
+	"strings"
 
 	"github.com/chzyer/flagly"
+	"github.com/chzyer/next/util"
 	"github.com/chzyer/readline"
 	"gopkg.in/logex.v1"
 )
@@ -21,20 +22,19 @@ func (Login) FlaglyHandle(c Client) {
 	c.Relogin()
 }
 
-type ShellDebugGoroutine struct{}
+type ShellDebugGoroutine struct {
+	Find string `type:"[0]"`
+}
 
-func (ShellDebugGoroutine) FlaglyHandle(rl *readline.Instance) {
-	stack := make([]byte, 1024)
-	n := 0
-	for {
-		n = runtime.Stack(stack, true)
-		if n == cap(stack) {
-			stack = make([]byte, cap(stack)*2)
-			continue
-		}
-		break
+func (s ShellDebugGoroutine) FlaglyHandle(rl *readline.Instance) error {
+	var ret string
+	if s.Find == "" {
+		ret = string(util.GetRuntimeStackInfo())
+	} else {
+		sp := util.FindRuntimeStack(s.Find)
+		ret = strings.Join(sp, "\n\n")
 	}
-	fmt.Fprintln(rl, string(stack[:n]))
+	return fmt.Errorf(ret)
 }
 
 type ShellDebugLog struct {
