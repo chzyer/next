@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"time"
 
+	"gopkg.in/logex.v1"
+
 	"github.com/chzyer/flow"
 	"github.com/chzyer/next/packet"
 )
@@ -33,6 +35,7 @@ func (c *Client) RequestNewDC() {
 	ok := c.SendTimeout(packet.New(nil, packet.NEWDC), time.Second)
 	if !ok {
 		// fail
+		logex.Info("request new dc timed out")
 	}
 }
 
