@@ -1,4 +1,4 @@
-package packet
+package statistic
 
 import (
 	"container/list"
@@ -7,19 +7,20 @@ import (
 	"time"
 
 	"github.com/chzyer/flow"
+	"github.com/chzyer/next/packet"
 )
 
-type HeartBeatStatInfo struct {
+type HeartBeatInfo struct {
 	total  time.Duration
 	count  int64
 	droped int64
 }
 
-func (s *HeartBeatStatInfo) dropStr() string {
+func (s *HeartBeatInfo) dropStr() string {
 	return fmt.Sprintf("%v/%v", s.droped, s.count)
 }
 
-func (s *HeartBeatStatInfo) rtt() time.Duration {
+func (s *HeartBeatInfo) rtt() time.Duration {
 	if s.count == 0 {
 		return 0
 	}
@@ -32,22 +33,22 @@ func (s *HeartBeatStatInfo) rtt() time.Duration {
 	return d
 }
 
-func (s *HeartBeatStatInfo) Add(s2 *HeartBeatStatInfo) {
+func (s *HeartBeatInfo) Add(s2 *HeartBeatInfo) {
 	s.total += s2.total
 	s.count += s2.count
 	s.droped += s2.droped
 }
 
-type HeartBeatStat struct {
+type HeartBeat struct {
 	start      time.Time
-	lastTime   int                   // the time of lastest slot
-	slots      [90]HeartBeatStatInfo // 15 mintue, 10s one item
+	lastTime   int               // the time of lastest slot
+	slots      [90]HeartBeatInfo // 15 mintue, 10s one item
 	lastCommit int64
 	size       int
 }
 
-func (s *HeartBeatStat) getMin(n int) *HeartBeatStatInfo {
-	h := &HeartBeatStatInfo{}
+func (s *HeartBeat) getMin(n int) *HeartBeatInfo {
+	h := &HeartBeatInfo{}
 	n *= 6
 	if n > s.size {
 		n = s.size
@@ -58,7 +59,7 @@ func (s *HeartBeatStat) getMin(n int) *HeartBeatStatInfo {
 	return h
 }
 
-func (s *HeartBeatStat) getSlot() *HeartBeatStatInfo {
+func (s *HeartBeat) getSlot() *HeartBeatInfo {
 	now := time.Now()
 	ts := (now.Minute() * 6) + (now.Second() / 10)
 
@@ -67,7 +68,7 @@ func (s *HeartBeatStat) getSlot() *HeartBeatStatInfo {
 		for i := s.size - 1; i >= 1; i-- {
 			s.slots[i] = s.slots[i-1]
 		}
-		s.slots[0] = HeartBeatStatInfo{}
+		s.slots[0] = HeartBeatInfo{}
 
 		if s.size < len(s.slots) {
 			s.size++
@@ -79,7 +80,7 @@ func (s *HeartBeatStat) getSlot() *HeartBeatStatInfo {
 	return &s.slots[0]
 }
 
-func (s *HeartBeatStat) isNeedClean() error {
+func (s *HeartBeat) isNeedClean() error {
 	stat := s.getMin(1)
 	if stat.count > 10 {
 		if stat.droped >= stat.count/2 {
@@ -98,25 +99,25 @@ func (s *HeartBeatStat) isNeedClean() error {
 	return nil
 }
 
-func (s *HeartBeatStat) submitDrop(n int) {
+func (s *HeartBeat) submitDrop(n int) {
 	slot := s.getSlot()
 	atomic.StoreInt64(&s.lastCommit, time.Now().Unix())
 	slot.droped += int64(n)
 	slot.count++
 }
 
-func (s *HeartBeatStat) submitDuration(d time.Duration) {
+func (s *HeartBeat) submitDuration(d time.Duration) {
 	slot := s.getSlot()
 	atomic.StoreInt64(&s.lastCommit, time.Now().Unix())
 	slot.total += d
 	slot.count++
 }
 
-func (s *HeartBeatStat) lifeTime() time.Duration {
+func (s *HeartBeat) lifeTime() time.Duration {
 	return time.Now().Round(time.Second).Sub(s.start.Round(time.Second))
 }
 
-func (s HeartBeatStat) String() string {
+func (s HeartBeat) String() string {
 	min1 := s.getMin(1)
 	min5 := s.getMin(5)
 	min15 := s.getMin(15)
@@ -134,12 +135,12 @@ type heartBeatItem struct {
 type HeartBeatStage struct {
 	flow        *flow.Flow
 	staging     *list.List
-	receiveChan chan *IV
-	addChan     chan *IV
+	receiveChan chan *packet.IV
+	addChan     chan *packet.IV
 	timeout     time.Duration
 	delegate    CleanDelegate
 
-	stat HeartBeatStat
+	stat HeartBeat
 }
 
 type CleanDelegate interface {
@@ -150,8 +151,8 @@ func NewHeartBeatStage(f *flow.Flow, timeout time.Duration, d CleanDelegate) *He
 	hbs := &HeartBeatStage{
 		timeout:     timeout,
 		staging:     list.New(),
-		receiveChan: make(chan *IV, 8),
-		addChan:     make(chan *IV, 8),
+		receiveChan: make(chan *packet.IV, 8),
+		addChan:     make(chan *packet.IV, 8),
 		flow:        f,
 		delegate:    d,
 	}
@@ -161,18 +162,18 @@ func NewHeartBeatStage(f *flow.Flow, timeout time.Duration, d CleanDelegate) *He
 	return hbs
 }
 
-func (h *HeartBeatStage) New() *Packet {
-	return New(nil, HEARTBEAT)
+func (h *HeartBeatStage) New() *packet.Packet {
+	return packet.New(nil, packet.HEARTBEAT)
 }
 
-func (h *HeartBeatStage) Add(iv *IV) {
+func (h *HeartBeatStage) Add(iv *packet.IV) {
 	select {
 	case h.addChan <- iv:
 	case <-h.flow.IsClose():
 	}
 }
 
-func (h *HeartBeatStage) Receive(iv *IV) {
+func (h *HeartBeatStage) Receive(iv *packet.IV) {
 	select {
 	case h.receiveChan <- iv:
 	case <-h.flow.IsClose():
@@ -194,7 +195,7 @@ func (h *HeartBeatStage) findElem(reqid uint32) *list.Element {
 	return nil
 }
 
-func (h *HeartBeatStage) GetStat() *HeartBeatStat {
+func (h *HeartBeatStage) GetStat() *HeartBeat {
 	s := h.stat
 	return &s
 }

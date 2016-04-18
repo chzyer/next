@@ -13,13 +13,18 @@ import (
 	"gopkg.in/logex.v1"
 )
 
+var (
+	_ Channel        = new(TcpChan)
+	_ ChannelFactory = new(TcpChanFactory)
+)
+
 type TcpChan struct {
 	flow    *flow.Flow
 	session *packet.SessionIV
 	conn    net.Conn
 
 	// private
-	heartBeat *packet.HeartBeatStage
+	heartBeat *statistic.HeartBeatStage
 	speed     *statistic.Speed
 
 	// runtime
@@ -39,7 +44,7 @@ func NewTcpChan(f *flow.Flow, session *packet.SessionIV, conn net.Conn, out chan
 		out:   out,
 	}
 	f.ForkTo(&ch.flow, ch.Close)
-	ch.heartBeat = packet.NewHeartBeatStage(ch.flow, 5*time.Second, ch)
+	ch.heartBeat = statistic.NewHeartBeatStage(ch.flow, 5*time.Second, ch)
 	return ch
 }
 
@@ -172,6 +177,6 @@ func (c *TcpChan) Name() string {
 	)
 }
 
-func (c *TcpChan) GetStat() *packet.HeartBeatStat {
+func (c *TcpChan) GetStat() *statistic.HeartBeat {
 	return c.heartBeat.GetStat()
 }

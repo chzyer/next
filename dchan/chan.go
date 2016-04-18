@@ -30,7 +30,7 @@ type ChannelFactory interface {
 type Channel interface {
 	Close()
 	Name() string
-	GetStat() *packet.HeartBeatStat
+	GetStat() *statistic.HeartBeat
 	Latency() (time.Duration, time.Duration)
 	GetUserId() int
 	AddOnClose(func())

@@ -1,59 +1,91 @@
 package dchan
 
 import (
+	"fmt"
 	"net"
 	"time"
 
+	"github.com/chzyer/flow"
 	"github.com/chzyer/next/packet"
 	"github.com/chzyer/next/statistic"
 )
 
-var _ Channel = &HttpChan{}
+var (
+	_ Channel        = new(HttpChan)
+	_ ChannelFactory = new(HttpChanFactory)
+)
 
 // to simulate http interactive
-type HttpChan struct{}
+type HttpChan struct {
+	flow    *flow.Flow
+	session *packet.SessionIV
+	in      chan *packet.Packet
+	fromDC  chan<- *packet.Packet
+	onClose func()
+	conn    net.Conn
 
-func NewHttpChan() *HttpChan {
-	return nil
+	heartBeat *statistic.HeartBeatStage
+	speed     *statistic.Speed
+	exitError error
 }
 
-func (h *HttpChan) AddOnClose(func()) {
-
+func NewHttpChan(f *flow.Flow, session *packet.SessionIV, conn net.Conn, out chan<- *packet.Packet) *HttpChan {
+	hc := &HttpChan{
+		session: session,
+		fromDC:  out,
+		conn:    conn,
+		speed:   statistic.NewSpeed(),
+		in:      make(chan *packet.Packet),
+	}
+	f.ForkTo(&hc.flow, hc.Close)
+	hc.heartBeat = statistic.NewHeartBeatStage(hc.flow, 5*time.Second, hc)
+	return hc
 }
 
-func (h *HttpChan) CliAuth(conn net.Conn, session *packet.SessionIV) error {
-	return nil
+func (h *HttpChan) HeartBeatClean(err error) {
+	h.exitError = fmt.Errorf("clean: %v", err)
+	h.Close()
 }
 
-func (h *HttpChan) SvrAuth(delegate SvrAuthDelegate, conn net.Conn, port int) (*packet.SessionIV, error) {
-	return nil, nil
+func (h *HttpChan) AddOnClose(f func()) {
+	h.onClose = f
 }
 
-func (h *HttpChan) Run() {}
+func (h *HttpChan) Run() {
+
+}
 
 func (h *HttpChan) GetUserId() int {
-	return 0
+	return int(h.session.UserId)
 }
 
 func (h *HttpChan) Close() {
+	if !h.flow.MarkExit() {
+		return
+	}
+	h.flow.Close()
+	h.conn.Close()
+	if h.onClose != nil {
+		h.onClose()
+	}
 }
 
 func (h *HttpChan) Name() string {
 	return ""
 }
 
-func (h *HttpChan) GetStat() *packet.HeartBeatStat {
-	return nil
+func (h *HttpChan) GetStat() *statistic.HeartBeat {
+	return h.heartBeat.GetStat()
 }
 
 func (h *HttpChan) Latency() (time.Duration, time.Duration) {
-	return 0, 0
+	return h.heartBeat.GetLatency()
 }
 
 func (h *HttpChan) GetSpeed() *statistic.SpeedInfo {
-	return nil
+	return h.speed.GetSpeed()
 }
 
 func (h *HttpChan) ChanWrite() chan<- *packet.Packet {
-	return nil
+	return h.in
 }
