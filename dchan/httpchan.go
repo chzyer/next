@@ -20,6 +20,12 @@ func (h *HttpChan) AddOnClose(func()) {
 
 }
 
+func (h *HttpChan) Run() {}
+
+func (h *HttpChan) GetUserId() int {
+	return 0
+}
+
 func (h *HttpChan) Close() {
 }
 

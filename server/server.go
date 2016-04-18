@@ -24,7 +24,8 @@ type Server struct {
 	tun   *Tun
 
 	controllerGroup *controller.Group
-	dcs             *dchan.Server
+	dchanServer     *dchan.Server
+	dchanGroup      *dchan.ListenerGroup
 }
 
 func New(cfg *Config, f *flow.Flow) *Server {
@@ -35,6 +36,7 @@ func New(cfg *Config, f *flow.Flow) *Server {
 		cl:   clock.New(),
 	}
 	f.SetOnClose(svr.Close)
+	svr.dchanServer = dchan.NewServer(svr.flow, svr)
 
 	err := svr.uc.Load(cfg.DBPath)
 	if err != nil {
@@ -72,8 +74,8 @@ func (s *Server) runHttp() {
 }
 
 func (s *Server) loadDataChannel() {
-	s.dcs = dchan.NewServer(s.flow, s)
-	go s.dcs.Run(4)
+	s.dchanGroup = dchan.NewListenerGroup(s.flow, s)
+	go s.dchanGroup.Run(4)
 }
 
 func (s *Server) initAndRunTun() bool {
@@ -163,12 +165,16 @@ func (s *Server) GetMTU() int {
 }
 
 func (s *Server) GetDataChannel() int {
-	return s.dcs.GetDataChannel()
+	return s.dchanGroup.GetDataChannel()
 }
 
 // -----------------------------------------------------------------------------
 // controller
 
 func (s *Server) GetAllDataChannel() []int {
-	return s.dcs.GetAllDataChannel()
+	return s.dchanGroup.GetAllDataChannel()
+}
+
+func (s *Server) OnNewChannel(ch dchan.Channel) {
+	s.dchanServer.AddChannel(ch)
 }

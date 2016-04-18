@@ -29,9 +29,12 @@ type Group struct {
 
 	usefulChans atomic.Value // []int
 	selectCase  []reflect.SelectCase
+
+	toDC   <-chan *packet.Packet
+	fromDC chan<- *packet.Packet
 }
 
-func NewGroup(f *flow.Flow) *Group {
+func NewGroup(f *flow.Flow, toDC <-chan *packet.Packet, fromDC chan<- *packet.Packet) *Group {
 	newUseful := make(chan struct{}, 1)
 	g := &Group{
 		chanList:        list.New(),
@@ -40,6 +43,9 @@ func NewGroup(f *flow.Flow) *Group {
 			Dir:  reflect.SelectRecv,
 			Chan: reflect.ValueOf(newUseful),
 		},
+
+		toDC:   toDC,
+		fromDC: fromDC,
 	}
 	f.ForkTo(&g.flow, g.Close)
 	g.flowIsCloseCase = reflect.SelectCase{
@@ -47,6 +53,22 @@ func NewGroup(f *flow.Flow) *Group {
 		Chan: reflect.ValueOf(f.IsClose()),
 	}
 	return g
+}
+
+func (s *Group) sendLoop() {
+	s.flow.Add(1)
+	defer s.flow.DoneAndClose()
+
+loop:
+	for !s.flow.IsClosed() {
+		select {
+		case p := <-s.toDC:
+			logex.Debug(p)
+			s.Send(p)
+		case <-s.flow.IsClose():
+			break loop
+		}
+	}
 }
 
 func (g *Group) findChannel(f func(Channel) bool) Channel {
@@ -108,6 +130,7 @@ func (g *Group) GetStatsInfo() string {
 }
 
 func (g *Group) Run() {
+	go g.sendLoop()
 	go g.loop()
 }
 

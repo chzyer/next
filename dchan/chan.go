@@ -12,7 +12,9 @@ type Channel interface {
 	Name() string
 	GetStat() *packet.HeartBeatStat
 	Latency() (time.Duration, time.Duration)
+	GetUserId() int
 	AddOnClose(func())
 	GetSpeed() *statistic.SpeedInfo
 	ChanWrite() chan<- *packet.Packet
+	Run()
 }

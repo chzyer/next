@@ -1,4 +1,4 @@
-package datachannel
+package dchan
 
 import (
 	"net"
@@ -46,7 +46,7 @@ func (d *Listener) GetPort() int {
 	return d.port
 }
 
-func (d *Listener) Accept() (*DC, error) {
+func (d *Listener) Accept() (Channel, error) {
 	conn, err := d.ln.Accept()
 	if err != nil {
 		return nil, logex.Trace(err)
@@ -55,13 +55,13 @@ func (d *Listener) Accept() (*DC, error) {
 	if err != nil {
 		return nil, logex.Trace(err)
 	}
-	_, _, err = d.delegate.GetUserChannelFromDataChannel(int(session.UserId))
+	_, toUser, err := d.delegate.GetUserChannelFromDataChannel(int(session.UserId))
 	if err != nil {
 		return nil, logex.Trace(err)
 	}
 
-	dc := New(d.flow, conn, session, &Config{})
-	return dc, nil
+	ch := NewTcpChan(d.flow, session, conn, toUser)
+	return ch, nil
 }
 
 func (d *Listener) Serve() {
@@ -69,13 +69,12 @@ func (d *Listener) Serve() {
 	defer d.flow.DoneAndClose()
 
 	for !d.flow.IsClosed() {
-		dc, err := d.Accept()
+		ch, err := d.Accept()
 		if err != nil {
 			break
 		}
-		fromUser, toUser, _ := d.delegate.GetUserChannelFromDataChannel(
-			dc.GetUserId())
-		go dc.Run(fromUser, toUser)
+		d.delegate.OnNewChannel(ch)
+		go ch.Run()
 	}
 }
 

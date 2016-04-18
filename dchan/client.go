@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/chzyer/flow"
-	"github.com/chzyer/next/datachannel"
 	"github.com/chzyer/next/packet"
 	"github.com/chzyer/next/statistic"
 	"github.com/chzyer/next/util"
@@ -44,7 +43,6 @@ type Client struct {
 	delegate ClientDelegate
 
 	ports       []int
-	toDC        <-chan *packet.Packet
 	fromDC      chan<- *packet.Packet
 	connectChan chan Slot
 }
@@ -59,11 +57,10 @@ func NewClient(f *flow.Flow, s *packet.SessionIV, delegate ClientDelegate,
 		delegate:    delegate,
 		connectChan: make(chan Slot, 1024),
 		session:     s,
-		toDC:        toDC,
 		fromDC:      fromDC,
 	}
 	f.ForkTo(&cli.flow, cli.Close)
-	cli.group = NewGroup(cli.flow)
+	cli.group = NewGroup(cli.flow, toDC, fromDC)
 	return cli
 }
 
@@ -73,7 +70,6 @@ func (c *Client) CloseChannel(name string) error {
 
 func (c *Client) Run() {
 	c.group.Run()
-	go c.sendLoop()
 	go c.connectLoop()
 }
 
@@ -154,7 +150,7 @@ func (c *Client) MakeNewChannel(slot Slot) error {
 	}
 	session := c.session.Clone(slot.Port)
 	ch := NewTcpChan(c.flow, session, conn, c.fromDC)
-	if err := datachannel.ClientCheckAuth(conn, session); err != nil {
+	if err := ClientCheckAuth(conn, session); err != nil {
 		return logex.Trace(err)
 	}
 	ch.AddOnClose(func() {
@@ -222,22 +218,6 @@ loop:
 			} else {
 				atomic.AddInt32(&c.runningChans, 1)
 			}
-		case <-c.flow.IsClose():
-			break loop
-		}
-	}
-}
-
-func (c *Client) sendLoop() {
-	c.flow.Add(1)
-	defer c.flow.DoneAndClose()
-
-loop:
-	for !c.flow.IsClosed() {
-		select {
-		case p := <-c.toDC:
-			logex.Debug(p)
-			c.group.Send(p)
 		case <-c.flow.IsClose():
 			break loop
 		}
