@@ -60,7 +60,8 @@ loop:
 	for {
 		select {
 		case data := <-in:
-			_, err := t.tun.Write(data)
+			n, err := t.tun.Write(data)
+			logex.Debug("tun write:", n)
 			if err != nil {
 				break loop
 			}
@@ -76,6 +77,7 @@ func (t *Tun) readLoop(out chan []byte) {
 loop:
 	for {
 		n, err := t.tun.Read(buf)
+		logex.Debug("tun read:", n)
 		if err != nil {
 			break
 		}
