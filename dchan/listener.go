@@ -6,17 +6,17 @@ import (
 	"strings"
 
 	"github.com/chzyer/flow"
-	"github.com/chzyer/next/packet"
 	"gopkg.in/logex.v1"
 )
 
 // add self monitor
 type Listener struct {
-	ln       net.Listener
-	flow     *flow.Flow
-	delegate SvrDelegate
-	port     int
-	onClose  func()
+	ln          net.Listener
+	flow        *flow.Flow
+	delegate    SvrDelegate
+	chanFactory ChannelFactory
+	port        int
+	onClose     func()
 }
 
 func NewListener(f *flow.Flow, d SvrDelegate, c func()) (*Listener, error) {
@@ -33,10 +33,11 @@ func NewListener(f *flow.Flow, d SvrDelegate, c func()) (*Listener, error) {
 		panic(err)
 	}
 	dcln := &Listener{
-		ln:       ln,
-		port:     port,
-		delegate: d,
-		onClose:  c,
+		ln:          ln,
+		port:        port,
+		delegate:    d,
+		onClose:     c,
+		chanFactory: TcpChanFactory{},
 	}
 	f.ForkTo(&dcln.flow, dcln.Close)
 	return dcln, nil
@@ -51,7 +52,8 @@ func (d *Listener) Accept() (Channel, error) {
 	if err != nil {
 		return nil, logex.Trace(err)
 	}
-	session, err := d.checkAuth(conn)
+
+	session, err := d.chanFactory.SvrAuth(d.delegate, conn, d.port)
 	if err != nil {
 		return nil, logex.Trace(err)
 	}
@@ -60,7 +62,7 @@ func (d *Listener) Accept() (Channel, error) {
 		return nil, logex.Trace(err)
 	}
 
-	ch := NewTcpChan(d.flow, session, conn, toUser)
+	ch := d.chanFactory.New(d.flow, session, conn, toUser)
 	return ch, nil
 }
 
@@ -86,8 +88,4 @@ func (d *Listener) Close() {
 	d.ln.Close()
 	d.flow.Close()
 	d.onClose()
-}
-
-func (d *Listener) checkAuth(conn net.Conn) (*packet.SessionIV, error) {
-	return ServerCheckAuth(d.delegate, d.port, conn)
 }

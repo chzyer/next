@@ -1,6 +1,7 @@
 package dchan
 
 import (
+	"net"
 	"time"
 
 	"github.com/chzyer/next/packet"
@@ -18,6 +19,14 @@ func NewHttpChan() *HttpChan {
 
 func (h *HttpChan) AddOnClose(func()) {
 
+}
+
+func (h *HttpChan) CliAuth(conn net.Conn, session *packet.SessionIV) error {
+	return nil
+}
+
+func (h *HttpChan) SvrAuth(delegate SvrAuthDelegate, conn net.Conn, port int) (*packet.SessionIV, error) {
+	return nil, nil
 }
 
 func (h *HttpChan) Run() {}

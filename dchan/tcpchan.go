@@ -29,7 +29,7 @@ type TcpChan struct {
 	out chan<- *packet.Packet
 }
 
-func NewTcpChan(f *flow.Flow, session *packet.SessionIV, conn net.Conn, out chan<- *packet.Packet) *TcpChan {
+func NewTcpChan(f *flow.Flow, session *packet.SessionIV, conn net.Conn, out chan<- *packet.Packet) Channel {
 	ch := &TcpChan{
 		session: session,
 		conn:    conn,

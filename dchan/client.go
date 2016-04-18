@@ -39,6 +39,7 @@ type Client struct {
 	session      *packet.SessionIV
 	mutex        sync.Mutex
 	runningChans int32
+	chanFactory  ChannelFactory
 
 	delegate ClientDelegate
 
@@ -58,6 +59,7 @@ func NewClient(f *flow.Flow, s *packet.SessionIV, delegate ClientDelegate,
 		connectChan: make(chan Slot, 1024),
 		session:     s,
 		fromDC:      fromDC,
+		chanFactory: TcpChanFactory{},
 	}
 	f.ForkTo(&cli.flow, cli.Close)
 	cli.group = NewGroup(cli.flow, toDC, fromDC)
@@ -149,8 +151,8 @@ func (c *Client) MakeNewChannel(slot Slot) error {
 		return logex.Trace(err)
 	}
 	session := c.session.Clone(slot.Port)
-	ch := NewTcpChan(c.flow, session, conn, c.fromDC)
-	if err := ClientCheckAuth(conn, session); err != nil {
+	ch := c.chanFactory.New(c.flow, session, conn, c.fromDC)
+	if err := c.chanFactory.CliAuth(conn, session); err != nil {
 		return logex.Trace(err)
 	}
 	ch.AddOnClose(func() {

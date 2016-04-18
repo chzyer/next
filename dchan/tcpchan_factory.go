@@ -5,6 +5,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/chzyer/flow"
 	"github.com/chzyer/next/packet"
 	"gopkg.in/logex.v1"
 )
@@ -14,16 +15,16 @@ var (
 	ErrUnexpectedPacketType = logex.Define("unexpected packet type")
 )
 
-type SvrDelegate interface {
-	OnDChanUpdate([]int)
-	OnNewChannel(Channel)
-	GetUserToken(id int) string
-	GetUserChannelFromDataChannel(id int) (
-		fromUser <-chan *packet.Packet, toUser chan<- *packet.Packet, err error)
+var _ ChannelFactory = TcpChanFactory{}
+
+type TcpChanFactory struct{}
+
+func (TcpChanFactory) New(f *flow.Flow, session *packet.SessionIV, conn net.Conn, out chan<- *packet.Packet) Channel {
+	return NewTcpChan(f, session, conn, out)
 }
 
 // try resend or timeout
-func ClientCheckAuth(conn net.Conn, session *packet.SessionIV) error {
+func (TcpChanFactory) CliAuth(conn net.Conn, session *packet.SessionIV) error {
 	p := packet.New(session.Token, packet.AUTH)
 	conn.SetWriteDeadline(time.Now().Add(2 * time.Second))
 	if _, err := conn.Write(p.Marshal(session)); err != nil {
@@ -44,7 +45,7 @@ func ClientCheckAuth(conn net.Conn, session *packet.SessionIV) error {
 	return nil
 }
 
-func ServerCheckAuth(delegate SvrDelegate, port int, conn net.Conn) (*packet.SessionIV, error) {
+func (TcpChanFactory) SvrAuth(delegate SvrAuthDelegate, conn net.Conn, port int) (*packet.SessionIV, error) {
 	conn.SetReadDeadline(time.Now().Add(5 * time.Second))
 	iv, err := packet.ReadIV(conn)
 	if err != nil {
