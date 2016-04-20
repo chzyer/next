@@ -16,8 +16,8 @@ import (
 )
 
 var (
-// _ Channel        = new(HttpChan)
-// _ ChannelFactory = new(HttpChanFactory)
+	_ Channel        = new(HttpChan)
+	_ ChannelFactory = new(HttpChanFactory)
 )
 
 // to simulate http interactive

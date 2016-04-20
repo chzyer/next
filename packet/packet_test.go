@@ -1,7 +1,6 @@
 package packet
 
 import (
-	"bytes"
 	"crypto/rand"
 	"testing"
 
@@ -15,20 +14,11 @@ func TestPacket(t *testing.T) {
 	packet := New(payload, AUTH)
 	packet.ReqId = 1
 
-	token := make([]byte, 32)
-	rand.Read(payload)
-	userId := uint16(1)
-	s := NewSessionCli(int(userId), token)
-	l2 := WrapL2(s, packet)
-	data := l2.Marshal()
+	data := packet.Marshal()
 
-	l2ret, err := ReadL2(bytes.NewReader(data))
-	err = l2ret.Verify(s)
-	test.Nil(err)
-	packetDst, err := Unmarshal(l2ret.Payload)
+	packetDst, err := Unmarshal(data)
 	test.Nil(err)
 
-	test.Equal(l2ret.UserId, userId)
 	test.Equal(packetDst.ReqId, packet.ReqId)
 	test.Equal(packetDst.Type, AUTH)
 	test.Equal(packetDst.Payload(), payload)

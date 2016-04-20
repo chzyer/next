@@ -82,7 +82,7 @@ func (c *TcpChan) Run() {
 
 func (c *TcpChan) rawWrite(p *packet.Packet) error {
 	l2 := packet.WrapL2(c.session, p)
-	n, err := c.conn.Write(l2.Marshal())
+	n, err := c.conn.Write(c.MarshalL2(l2))
 	c.speed.Upload(n)
 	return err
 }
@@ -118,6 +118,10 @@ loop:
 	}
 }
 
+func (TcpChan) Factory() ChannelFactory {
+	return TcpChanFactory{}
+}
+
 func (c *TcpChan) readLoop() {
 	c.flow.Add(1)
 	defer c.flow.DoneAndClose()
@@ -126,7 +130,7 @@ func (c *TcpChan) readLoop() {
 loop:
 	for !c.flow.IsClosed() {
 		c.conn.SetReadDeadline(time.Now().Add(10 * time.Second))
-		l2, err := packet.ReadL2(buf)
+		l2, err := c.ReadL2(buf)
 		if err != nil {
 			c.exitError = fmt.Errorf("read error: %v", err)
 			break
