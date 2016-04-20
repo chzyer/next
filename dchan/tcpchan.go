@@ -139,7 +139,7 @@ loop:
 		if c.IsSvrModeAndUninit() {
 			out, err := c.delegate.Init(int(l2.UserId))
 			if err != nil {
-				c.exitError = fmt.Errorf("init error:", err)
+				c.exitError = fmt.Errorf("init error: %v", err)
 				break
 			}
 			c.markInit(out)
