@@ -20,7 +20,10 @@ func EncodeAes(dst, src, key, iv []byte) {
 	if iv == nil {
 		iv = defaultIV
 	}
-	block, _ := aes.NewCipher(key)
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		panic(err)
+	}
 	cipher.NewCFBEncrypter(block, iv).XORKeyStream(dst, src)
 }
 

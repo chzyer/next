@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/chzyer/flow"
+	"github.com/chzyer/next/packet"
 	"gopkg.in/logex.v1"
 )
 
@@ -47,22 +48,31 @@ func (d *Listener) GetPort() int {
 	return d.port
 }
 
+type listenerDelegate struct {
+	delegate SvrDelegate
+}
+
+func (d *listenerDelegate) Init(userId int) (toUser chan<- *packet.Packet, err error) {
+	_, toUser, err = d.delegate.GetUserChannelFromDataChannel(userId)
+	if err != nil {
+		return nil, err
+	}
+	return toUser, nil
+}
+
+func (d *listenerDelegate) OnInited(ch Channel) {
+	d.delegate.OnNewChannel(ch)
+}
+
 func (d *Listener) Accept() (Channel, error) {
 	conn, err := d.ln.Accept()
 	if err != nil {
 		return nil, logex.Trace(err)
 	}
 
-	session, err := d.chanFactory.SvrAuth(d.delegate, conn, d.port)
-	if err != nil {
-		return nil, logex.Trace(err)
-	}
-	_, toUser, err := d.delegate.GetUserChannelFromDataChannel(int(session.UserId))
-	if err != nil {
-		return nil, logex.Trace(err)
-	}
-
-	ch := d.chanFactory.New(d.flow, session, conn, toUser)
+	session := packet.NewSessionSvr(d.delegate)
+	delegate := &listenerDelegate{d.delegate}
+	ch := d.chanFactory.NewServer(d.flow, session, conn, delegate)
 	return ch, nil
 }
 
@@ -75,7 +85,6 @@ func (d *Listener) Serve() {
 		if err != nil {
 			break
 		}
-		d.delegate.OnNewChannel(ch)
 		go ch.Run()
 	}
 }

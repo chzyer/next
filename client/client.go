@@ -78,8 +78,7 @@ loop:
 
 func (c *Client) initDataChannel(remoteCfg *uc.AuthResponse) (err error) {
 	port := remoteCfg.DataChannel
-	session := packet.NewSessionIV(
-		uint16(remoteCfg.UserId), uint16(port), []byte(remoteCfg.Token))
+	session := packet.NewSessionCli(remoteCfg.UserId, []byte(remoteCfg.Token))
 
 	if c.dcCli != nil {
 		c.dcCli.Close()

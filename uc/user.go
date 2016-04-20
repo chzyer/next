@@ -216,7 +216,7 @@ func init() {
 
 func GenToken() string {
 	letters := []byte("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
-	b := make([]byte, 30)
+	b := make([]byte, 32)
 	for i := range b {
 		b[i] = letters[rand.Intn(len(letters))]
 	}

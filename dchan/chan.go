@@ -11,20 +11,24 @@ import (
 
 type SvrDelegate interface {
 	SvrAuthDelegate
-	OnDChanUpdate([]int)
-	OnNewChannel(Channel)
 	GetUserChannelFromDataChannel(id int) (
 		fromUser <-chan *packet.Packet, toUser chan<- *packet.Packet, err error)
+	OnDChanUpdate([]int)
+	OnNewChannel(Channel)
+}
+
+type SvrInitDelegate interface {
+	Init(id int) (toUser chan<- *packet.Packet, err error)
+	OnInited(ch Channel)
 }
 
 type SvrAuthDelegate interface {
-	GetUserToken(id int) string
+	GetUserToken(id int) ([]byte, error)
 }
 
 type ChannelFactory interface {
-	New(*flow.Flow, *packet.SessionIV, net.Conn, chan<- *packet.Packet) Channel
-	CliAuth(conn net.Conn, session *packet.SessionIV) error
-	SvrAuth(delegate SvrAuthDelegate, conn net.Conn, port int) (*packet.SessionIV, error)
+	NewClient(*flow.Flow, *packet.Session, net.Conn, chan<- *packet.Packet) Channel
+	NewServer(*flow.Flow, *packet.Session, net.Conn, SvrInitDelegate) Channel
 }
 
 type Channel interface {
@@ -32,7 +36,7 @@ type Channel interface {
 	Name() string
 	GetStat() *statistic.HeartBeat
 	Latency() (time.Duration, time.Duration)
-	GetUserId() int
+	GetUserId() (int, error)
 	AddOnClose(func())
 	GetSpeed() *statistic.SpeedInfo
 	ChanWrite() chan<- *packet.Packet

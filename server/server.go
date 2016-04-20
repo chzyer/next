@@ -131,12 +131,12 @@ func (s *Server) GetUserChannelFromDataChannel(id int) (
 	return
 }
 
-func (s *Server) GetUserToken(id int) string {
+func (s *Server) GetUserToken(id int) ([]byte, error) {
 	u := s.uc.FindId(id)
 	if u == nil {
-		return ""
+		return nil, uc.ErrUserNotFound.Trace()
 	}
-	return u.Token
+	return []byte(u.Token), nil
 }
 
 func (s *Server) OnDChanUpdate(port []int) {

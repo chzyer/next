@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"net"
-	"strings"
 	"time"
 
 	"github.com/chzyer/flow"
@@ -20,8 +19,11 @@ var (
 
 type TcpChan struct {
 	flow    *flow.Flow
-	session *packet.SessionIV
+	session *packet.Session
 	conn    net.Conn
+
+	delegate     SvrInitDelegate
+	waitInitChan chan struct{}
 
 	// private
 	heartBeat *statistic.HeartBeatStage
@@ -34,18 +36,34 @@ type TcpChan struct {
 	out chan<- *packet.Packet
 }
 
-func NewTcpChan(f *flow.Flow, session *packet.SessionIV, conn net.Conn, out chan<- *packet.Packet) Channel {
+func NewTcpChanClient(f *flow.Flow, session *packet.Session, conn net.Conn, out chan<- *packet.Packet) Channel {
+	ch := NewTcpChanServer(f, session, conn, nil).(*TcpChan)
+	ch.markInit(out)
+	return ch
+}
+
+func NewTcpChanServer(f *flow.Flow, session *packet.Session, conn net.Conn, delegate SvrInitDelegate) Channel {
 	ch := &TcpChan{
-		session: session,
-		conn:    conn,
+		conn:         conn,
+		delegate:     delegate,
+		session:      session,
+		waitInitChan: make(chan struct{}, 1),
 
 		speed: statistic.NewSpeed(),
 		in:    make(chan *packet.Packet, 8),
-		out:   out,
 	}
 	f.ForkTo(&ch.flow, ch.Close)
 	ch.heartBeat = statistic.NewHeartBeatStage(ch.flow, 5*time.Second, ch)
 	return ch
+}
+
+func (c *TcpChan) markInit(out chan<- *packet.Packet) {
+	c.out = out
+	c.waitInitChan <- struct{}{}
+}
+
+func (c *TcpChan) IsSvrModeAndUninit() bool {
+	return c.session == nil || c.out == nil
 }
 
 func (c *TcpChan) GetSpeed() *statistic.SpeedInfo {
@@ -63,7 +81,8 @@ func (c *TcpChan) Run() {
 }
 
 func (c *TcpChan) rawWrite(p *packet.Packet) error {
-	n, err := c.conn.Write(p.Marshal(c.session))
+	l2 := packet.WrapL2(c.session, p)
+	n, err := c.conn.Write(l2.Marshal())
 	c.speed.Upload(n)
 	return err
 }
@@ -71,6 +90,10 @@ func (c *TcpChan) rawWrite(p *packet.Packet) error {
 func (c *TcpChan) writeLoop() {
 	c.flow.Add(1)
 	defer c.flow.DoneAndClose()
+
+	if !c.flow.WaitNotify(c.waitInitChan) {
+		return
+	}
 
 	heartBeatTicker := time.NewTicker(1 * time.Second)
 	defer heartBeatTicker.Stop()
@@ -84,14 +107,12 @@ loop:
 		case <-heartBeatTicker.C:
 			p := c.heartBeat.New()
 			err = c.rawWrite(p)
-			c.heartBeat.Add(p.IV)
+			c.heartBeat.Add(p)
 		case p := <-c.in:
 			err = c.rawWrite(p)
 		}
 		if err != nil {
-			if !strings.Contains(err.Error(), "closed") {
-				c.exitError = fmt.Errorf("write error: %v", err)
-			}
+			c.exitError = fmt.Errorf("write error: %v", err)
 			break
 		}
 	}
@@ -105,13 +126,32 @@ func (c *TcpChan) readLoop() {
 loop:
 	for !c.flow.IsClosed() {
 		c.conn.SetReadDeadline(time.Now().Add(10 * time.Second))
-		p, err := packet.Read(c.session, buf)
+		l2, err := packet.ReadL2(buf)
 		if err != nil {
-			if !strings.Contains(err.Error(), "closed") {
-				c.exitError = fmt.Errorf("read error: %v", err)
-			}
+			c.exitError = fmt.Errorf("read error: %v", err)
 			break
 		}
+		if err := l2.Verify(c.session); err != nil {
+			c.exitError = fmt.Errorf("verify error: %v", err)
+			break
+		}
+
+		if c.IsSvrModeAndUninit() {
+			out, err := c.delegate.Init(int(l2.UserId))
+			if err != nil {
+				c.exitError = fmt.Errorf("init error:", err)
+				break
+			}
+			c.markInit(out)
+			c.delegate.OnInited(c)
+		}
+
+		p, err := packet.Unmarshal(l2.Payload)
+		if err != nil {
+			c.exitError = fmt.Errorf("packet error: %v", err)
+			break
+		}
+
 		c.speed.Download(p.Size())
 		switch p.Type {
 		case packet.HEARTBEAT:
@@ -121,7 +161,7 @@ loop:
 				break loop
 			}
 		case packet.HEARTBEAT_R:
-			c.heartBeat.Receive(p.IV)
+			c.heartBeat.Receive(p)
 		default:
 			select {
 			case <-c.flow.IsClose():
@@ -158,8 +198,8 @@ func (c *TcpChan) Close() {
 	c.flow.Close()
 }
 
-func (c *TcpChan) GetUserId() int {
-	return int(c.session.UserId)
+func (c *TcpChan) GetUserId() (int, error) {
+	return c.session.UserId(), nil
 }
 
 func (c *TcpChan) Src() net.Addr {

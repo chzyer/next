@@ -122,7 +122,7 @@ loop:
 		case p := <-c.fromDC:
 			if p.Type.IsResp() {
 				// println("I got Reply:", p.IV.ReqId)
-				req := c.stage.Remove(p.IV.ReqId)
+				req := c.stage.Remove(p.ReqId)
 				if req != nil && req.Reply != nil {
 					select {
 					case req.Reply <- p:
@@ -159,9 +159,9 @@ loop:
 				continue
 			}
 			if req.Packet.Type == packet.DATA {
-				logex.Debug("resend:", req.Packet.IV.ReqId, req.Packet.Type.String())
+				logex.Debug("resend:", req.Packet.ReqId, req.Packet.Type.String())
 			} else {
-				logex.Info("resend:", req.Packet.IV.ReqId, req.Packet.Type.String())
+				logex.Info("resend:", req.Packet.ReqId, req.Packet.Type.String())
 			}
 			select {
 			case c.in <- req:
@@ -185,7 +185,7 @@ loop:
 		case req := <-c.in:
 			// add to staging
 			if req.Packet.Type.IsReq() {
-				req.Packet.InitIV(c)
+				req.Packet.SetReqId(c)
 				c.stage.Add(req)
 				// println("I add to stage: ",
 				//	req.Packet.IV.ReqId, req.Packet.Type.String())

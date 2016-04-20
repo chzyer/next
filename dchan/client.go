@@ -36,7 +36,7 @@ type ClientDelegate interface {
 type Client struct {
 	flow         *flow.Flow
 	group        *Group
-	session      *packet.SessionIV
+	session      *packet.Session
 	mutex        sync.Mutex
 	runningChans int32
 	chanFactory  ChannelFactory
@@ -51,7 +51,7 @@ type Client struct {
 // out is which datachannel can write for
 // all of channel share on fromDC, and have their owned toDC
 // client receive all packet from toDC and try to send them
-func NewClient(f *flow.Flow, s *packet.SessionIV, delegate ClientDelegate,
+func NewClient(f *flow.Flow, s *packet.Session, delegate ClientDelegate,
 	toDC <-chan *packet.Packet, fromDC chan<- *packet.Packet) *Client {
 
 	cli := &Client{
@@ -150,11 +150,8 @@ func (c *Client) MakeNewChannel(slot Slot) error {
 	if err != nil {
 		return logex.Trace(err)
 	}
-	session := c.session.Clone(slot.Port)
-	ch := c.chanFactory.New(c.flow, session, conn, c.fromDC)
-	if err := c.chanFactory.CliAuth(conn, session); err != nil {
-		return logex.Trace(err)
-	}
+	session := c.session.Clone()
+	ch := c.chanFactory.NewClient(c.flow, session, conn, c.fromDC)
 	ch.AddOnClose(func() {
 		c.onChanExit(slot)
 	})

@@ -11,9 +11,9 @@ func NewDataPacket(payload []byte) *DataPacket {
 }
 
 func (d *DataPacket) SrcIP() ip.IP {
-	return ip.NewIP(d.Payload[12:16])
+	return ip.NewIP(d.payload[12:16])
 }
 
 func (d *DataPacket) DestIP() ip.IP {
-	return ip.NewIP(d.Payload[16:20])
+	return ip.NewIP(d.payload[16:20])
 }

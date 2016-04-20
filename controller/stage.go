@@ -35,7 +35,7 @@ func (s *Stage) Add(p *Request) {
 	}
 	s.m.Lock()
 	req.Elem = s.queue.PushBack(req)
-	s.staging[p.Packet.IV.ReqId] = req
+	s.staging[p.Packet.ReqId] = req
 	s.m.Unlock()
 }
 
@@ -46,7 +46,7 @@ func (s *Stage) Pop(timeout time.Duration) *Request {
 		sreq := elem.Value.(*StageRequest)
 		if time.Now().Sub(sreq.Time) > timeout {
 			s.m.Unlock()
-			return s.removeLocked(sreq.Req.Packet.IV.ReqId)
+			return s.removeLocked(sreq.Req.Packet.ReqId)
 		}
 	}
 	s.m.Unlock()

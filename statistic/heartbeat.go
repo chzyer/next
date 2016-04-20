@@ -135,8 +135,8 @@ type heartBeatItem struct {
 type HeartBeatStage struct {
 	flow        *flow.Flow
 	staging     *list.List
-	receiveChan chan *packet.IV
-	addChan     chan *packet.IV
+	receiveChan chan *packet.Packet
+	addChan     chan *packet.Packet
 	timeout     time.Duration
 	delegate    CleanDelegate
 
@@ -151,8 +151,8 @@ func NewHeartBeatStage(f *flow.Flow, timeout time.Duration, d CleanDelegate) *He
 	hbs := &HeartBeatStage{
 		timeout:     timeout,
 		staging:     list.New(),
-		receiveChan: make(chan *packet.IV, 8),
-		addChan:     make(chan *packet.IV, 8),
+		receiveChan: make(chan *packet.Packet, 8),
+		addChan:     make(chan *packet.Packet, 8),
 		flow:        f,
 		delegate:    d,
 	}
@@ -166,16 +166,16 @@ func (h *HeartBeatStage) New() *packet.Packet {
 	return packet.New(nil, packet.HEARTBEAT)
 }
 
-func (h *HeartBeatStage) Add(iv *packet.IV) {
+func (h *HeartBeatStage) Add(p *packet.Packet) {
 	select {
-	case h.addChan <- iv:
+	case h.addChan <- p:
 	case <-h.flow.IsClose():
 	}
 }
 
-func (h *HeartBeatStage) Receive(iv *packet.IV) {
+func (h *HeartBeatStage) Receive(p *packet.Packet) {
 	select {
-	case h.receiveChan <- iv:
+	case h.receiveChan <- p:
 	case <-h.flow.IsClose():
 	}
 }

@@ -50,13 +50,13 @@ loop:
 			switch pRecv.Type {
 			case packet.DATA:
 				select {
-				case c.toTun <- pRecv.Data():
+				case c.toTun <- pRecv.Payload():
 				case <-c.flow.IsClose():
 					break loop
 				}
 			case packet.NEWDC_R:
 				var port []int
-				json.Unmarshal(pRecv.Payload, &port)
+				json.Unmarshal(pRecv.Payload(), &port)
 				if len(port) > 0 {
 					c.delegate.OnNewDC(port)
 				}

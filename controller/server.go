@@ -50,7 +50,7 @@ loop:
 				continue
 			case packet.DATA:
 				select {
-				case s.toTun <- p.Data():
+				case s.toTun <- p.Payload():
 				case <-s.flow.IsClose():
 					break loop
 				}

@@ -47,7 +47,11 @@ func (s *Server) Group(userId int) (*Group, error) {
 }
 
 func (s *Server) AddChannel(ch Channel) error {
-	group, err := s.Group(ch.GetUserId())
+	userId, err := ch.GetUserId()
+	if err != nil {
+		return err
+	}
+	group, err := s.Group(userId)
 	if err != nil {
 		return err
 	}
