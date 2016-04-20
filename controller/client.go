@@ -31,6 +31,10 @@ func NewClient(f *flow.Flow, delegate CliDelegate, toDC chan<- *packet.Packet, f
 	return cli
 }
 
+func (c *Client) GetFlow() *flow.Flow {
+	return c.flow
+}
+
 func (c *Client) RequestNewDC() {
 	ok := c.SendTimeout(packet.New(nil, packet.NEWDC), time.Second)
 	if !ok {

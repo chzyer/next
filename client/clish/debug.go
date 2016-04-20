@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/chzyer/flagly"
+	"github.com/chzyer/flow"
 	"github.com/chzyer/next/util"
 	"github.com/chzyer/readline"
 	"gopkg.in/logex.v1"
@@ -14,6 +15,37 @@ type ShellDebug struct {
 	Goroutine *ShellDebugGoroutine `flagly:"handler"`
 	Log       *ShellDebugLog       `flagly:"handler"`
 	Login     *Login               `flagly:"handler"`
+	Flow      *DebugFlow           `flagly:"handler"`
+}
+
+type DebugFlow struct {
+	Name string `type:"[0]"`
+}
+
+type Flower interface {
+	GetFlow() *flow.Flow
+}
+
+func (d *DebugFlow) FlaglyHandle(c Client) error {
+	var flower Flower
+	switch d.Name {
+	case "dchan.Client":
+		dchan, err := c.GetDchan()
+		if err != nil {
+			return err
+		}
+		flower = dchan
+	case "controller":
+		ctl, err := c.GetController()
+		if err != nil {
+			return err
+		}
+		flower = ctl
+	}
+	if flower == nil {
+		return fmt.Errorf("%v is not found", d.Name)
+	}
+	return fmt.Errorf(string(flower.GetFlow().GetDebug()))
 }
 
 type Login struct{}

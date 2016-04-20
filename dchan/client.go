@@ -75,6 +75,10 @@ func (c *Client) Run() {
 	go c.connectLoop()
 }
 
+func (c *Client) GetFlow() *flow.Flow {
+	return c.flow
+}
+
 func (c *Client) Close() {
 	if !c.flow.MarkExit() {
 		return
