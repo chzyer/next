@@ -3,6 +3,11 @@ package packet
 import (
 	"github.com/chzyer/next/crypto"
 	"github.com/chzyer/next2/util"
+	"gopkg.in/logex.v1"
+)
+
+var (
+	ErrUserNotMatch = logex.Define("user %v is not matched")
 )
 
 type AuthDelegate interface {

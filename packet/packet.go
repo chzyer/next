@@ -61,6 +61,7 @@ func newPacket(payload []byte, t Type) (*Packet, error) {
 	p := &Packet{
 		Type:    t,
 		payload: payload,
+		size:    len(payload),
 	}
 	if IsHasLoopbackPrefix && t == DATA {
 		p.payload = p.payload[len(loopbackPrefix):]

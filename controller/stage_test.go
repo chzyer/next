@@ -22,15 +22,15 @@ func TestStage(t *testing.T) {
 	dr := &dumpReqider{}
 	s := newStage()
 	p := packet.New(nil, packet.HEARTBEAT)
-	p.InitIV(dr)
+	p.SetReqId(dr)
 	req := NewRequest(p, true)
 
 	{
 		s.Add(req)
-		req2 := s.Remove(p.IV.ReqId)
+		req2 := s.Remove(p.ReqId)
 		test.Equal(req, req2)
 
-		req2 = s.Remove(p.IV.ReqId)
+		req2 = s.Remove(p.ReqId)
 		test.Nil(req2)
 
 		test.Equal(len(s.ShowStage()), 0)
