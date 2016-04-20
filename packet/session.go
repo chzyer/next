@@ -2,7 +2,6 @@ package packet
 
 import (
 	"github.com/chzyer/next/crypto"
-	"github.com/chzyer/next2/util"
 	"gopkg.in/logex.v1"
 )
 
@@ -48,7 +47,7 @@ func (s *Session) Verify(userId int, crc32 uint32, iv, payload []byte) error {
 		return err
 	}
 	s.Decode(iv, payload, payload)
-	if util.Crc32(payload) != crc32 {
+	if crypto.Crc32(payload) != crc32 {
 		return ErrInvalidToken.Trace("checksum not match")
 	}
 	return nil
