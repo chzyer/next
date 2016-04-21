@@ -95,7 +95,7 @@ func (s *Server) initControllerGroup() {
 }
 
 func (s *Server) runPprof() {
-	err := http.ListenAndServe("localhost:6060", nil)
+	err := http.ListenAndServe("localhost:10060", nil)
 	if err != nil {
 		s.flow.Error(err)
 	}
