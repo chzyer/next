@@ -45,8 +45,9 @@ func (s *Stage) Pop(timeout time.Duration) *Request {
 	if elem != nil {
 		sreq := elem.Value.(*StageRequest)
 		if time.Now().Sub(sreq.Time) > timeout {
+			req := s.removeLocked(sreq.Req.Packet.ReqId)
 			s.m.Unlock()
-			return s.removeLocked(sreq.Req.Packet.ReqId)
+			return req
 		}
 	}
 	s.m.Unlock()
