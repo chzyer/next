@@ -1,6 +1,7 @@
 package server
 
 import (
+	"net/http"
 	"strconv"
 
 	"github.com/chzyer/flow"
@@ -78,15 +79,14 @@ func (s *Server) loadDataChannel() {
 	go s.dchanGroup.Run(4)
 }
 
-func (s *Server) initAndRunTun() bool {
+func (s *Server) initAndRunTun() error {
 	tun, err := newTun(s.flow, s.cfg)
 	if err != nil {
-		s.flow.Error(err)
-		return false
+		return err
 	}
 	tun.Run()
 	s.tun = tun
-	return true
+	return nil
 }
 
 func (s *Server) initControllerGroup() {
@@ -94,14 +94,23 @@ func (s *Server) initControllerGroup() {
 	go s.controllerGroup.RunDeliver(s.tun.ReadChan())
 }
 
+func (s *Server) runPprof() {
+	err := http.ListenAndServe("localhost:6060", nil)
+	if err != nil {
+		s.flow.Error(err)
+	}
+}
+
 func (s *Server) Run() {
-	if !s.initAndRunTun() {
+	if err := s.initAndRunTun(); err != nil {
+		s.flow.Error(err)
 		return
 	}
 	s.initControllerGroup() // after tun
+	go s.runPprof()
 	go s.runHttp()
 	go s.runShell()
-	s.loadDataChannel()
+	go s.loadDataChannel()
 }
 
 // -----------------------------------------------------------------------------

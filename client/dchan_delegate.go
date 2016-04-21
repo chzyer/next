@@ -11,7 +11,6 @@ type DchanDelegate struct {
 
 func (d *DchanDelegate) OnAllBackoff(cli *dchan.Client) {
 	logex.Info("all dchan is backoff")
-	cli.Close()
 	d.c.NeedLogin()
 }
 

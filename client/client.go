@@ -60,6 +60,10 @@ loop:
 		select {
 		case <-c.needLoginChan:
 			logex.Info("need to login")
+			if c.dcCli != nil {
+				c.dcCli.Close()
+				c.dcCli = nil
+			}
 		resend:
 			if err := c.HTTP.Login(c.onLogin); err != nil {
 				logex.Error(err)
@@ -180,7 +184,15 @@ func (c *Client) initController(toDC chan<- *packet.Packet, fromDC <-chan *packe
 	return nil
 }
 
+func (c *Client) runPprof() {
+	err := http.ListenAndServe("localhost:6060", nil)
+	if err != nil {
+		c.flow.Error(err)
+	}
+}
+
 func (c *Client) Run() {
+	go c.runPprof()
 	if err := c.runShell(); err != nil {
 		c.flow.Error(err)
 		return
