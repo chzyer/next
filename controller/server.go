@@ -3,6 +3,8 @@ package controller
 import (
 	"encoding/json"
 
+	"gopkg.in/logex.v1"
+
 	"github.com/chzyer/flow"
 	"github.com/chzyer/next/packet"
 	"github.com/chzyer/next/uc"
@@ -25,7 +27,7 @@ func NewServer(f *flow.Flow, u *uc.User, toTun chan<- []byte) *Server {
 		user:       u,
 		toTun:      toTun,
 	}
-	go s.loop()
+	go s.recvLoop()
 	return s
 }
 
@@ -34,7 +36,7 @@ func (s *Server) NotifyDataChannel(port []int) {
 	return
 }
 
-func (s *Server) loop() {
+func (s *Server) recvLoop() {
 	s.flow.Add(1)
 	defer s.flow.DoneAndClose()
 
@@ -43,6 +45,7 @@ loop:
 	for {
 		select {
 		case p := <-out:
+			logex.Debug(p.Type)
 			switch p.Type {
 			case packet.NEWDC:
 				ret, _ := json.Marshal(s.ports)

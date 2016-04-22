@@ -46,6 +46,7 @@ loop:
 			c.mutex.RLock()
 			ctl := c.online[u.Id]
 			c.mutex.RUnlock()
+			logex.Debugf("send to %v: %v", u.Name, d.Packet.Type)
 			ctl.Send(d.Packet)
 		case <-c.flow.IsClose():
 			break loop

@@ -112,7 +112,7 @@ func (us *Users) FindByIP(addr ip.IP) *User {
 
 	for idx := range us.user {
 		if us.user[idx].Net == nil {
-			return nil
+			continue
 		}
 		if us.user[idx].Net.Equal(addr) {
 			return &us.user[idx]

@@ -33,10 +33,10 @@ func NewIP(b []byte) (ret IP) {
 }
 
 func (i IP) Equal(i2 IP) bool {
-	return i2[3] == i2[3] &&
-		i2[2] == i2[2] &&
-		i2[1] == i2[1] &&
-		i2[0] == i2[0]
+	return i[3] == i2[3] &&
+		i[2] == i2[2] &&
+		i[1] == i2[1] &&
+		i[0] == i2[0]
 }
 
 func (i IP) String() string {
