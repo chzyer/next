@@ -20,6 +20,7 @@ type Config struct {
 	Password  string
 	AesKey    string
 	RouteFile string `default:"routes.conf"`
+	Pprof     string `default:":10060"`
 
 	Sock string `desc:"unixsock for interactive with" default:"/tmp/next.sock"`
 

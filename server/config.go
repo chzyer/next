@@ -27,6 +27,7 @@ type Config struct {
 	Sock     string    `desc:"unixsock for interactive with" default:"/tmp/next.sock"`
 	MTU      int       `default:"1500"`
 	Net      *ip.IPNet `default:"10.8.0.1/24"`
+	Pprof    string    `default:":10060"`
 	DevId    int
 
 	DBPath string `desc:"filepath to persist user info" default:"nextuser"`

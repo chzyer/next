@@ -185,7 +185,11 @@ func (c *Client) initController(toDC chan<- *packet.Packet, fromDC <-chan *packe
 }
 
 func (c *Client) runPprof() {
-	err := http.ListenAndServe("localhost:10060", nil)
+	if !strings.HasPrefix(c.cfg.Pprof, ":") {
+		return
+	}
+
+	err := http.ListenAndServe("localhost"+c.cfg.Pprof, nil)
 	if err != nil {
 		c.flow.Error(err)
 	}

@@ -3,6 +3,7 @@ package server
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/chzyer/flow"
 	"github.com/chzyer/next/controller"
@@ -95,7 +96,11 @@ func (s *Server) initControllerGroup() {
 }
 
 func (s *Server) runPprof() {
-	err := http.ListenAndServe("localhost:10060", nil)
+	if !strings.HasPrefix(s.cfg.Pprof, ":") {
+		return
+	}
+
+	err := http.ListenAndServe("localhost"+s.cfg.Pprof, nil)
 	if err != nil {
 		s.flow.Error(err)
 	}
