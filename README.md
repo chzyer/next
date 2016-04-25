@@ -13,7 +13,7 @@ $ go get github.com/chzyer/next
 $ next sysenv #
 $ next genkey
 617e819c1551a6be8e31b76ed5cb8157
-$ next server -httpkey 617e819c1551a6be8e31b76ed5cb8157
+$ next server -key 617e819c1551a6be8e31b76ed5cb8157
 ... running...
 ```
 
@@ -29,7 +29,7 @@ password:
 ### client
 
 ```shell
-$ next client -aeskey 617e819c1551a6be8e31b76ed5cb8157 -username <userName> -password <password> <serverHost>
+$ next client -key 617e819c1551a6be8e31b76ed5cb8157 -username <userName> -password <password> <serverHost>
 ```
 
 ### test
