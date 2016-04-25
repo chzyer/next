@@ -97,4 +97,5 @@ type ShellCLI struct {
 	Help  flagly.CmdHelp `flagly:"handler"`
 	User  ShellUser      `flagly:"handler"`
 	Debug *ShellDebug    `flagly:"handler"`
+	Dchan *Dchan         `flagly:"handler"`
 }
