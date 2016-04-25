@@ -1,7 +1,13 @@
 # next
 [![build](https://travis-ci.org/chzyer/next.svg)](https://travis-ci.org/chzyer/next)
 
-### Server
+### install
+
+```shell
+$ go get github.com/chzyer/next
+```
+
+### server
 
 ```shell
 $ next sysenv #
@@ -20,7 +26,7 @@ Next Server CLI
 password:
 ```
 
-### Client
+### client
 
 ```shell
 $ next client -aeskey 617e819c1551a6be8e31b76ed5cb8157 -username <userName> -password <password> <serverHost>
@@ -38,7 +44,7 @@ PING 10.8.0.1 (10.8.0.1) 56(84) bytes of data.
 ```
 
 ### route table
-```
+```shell
 $ next shell
 Next Client CLI
  -> route add 8.8.8.8/32 'google dns'
@@ -54,7 +60,7 @@ Destination     Gateway         Genmask         Flags   MSS Window  irtt Iface
 ```
 
 ### show speed
-```
+```shell
 $ watch -n 1 next shell dchan speed
 
 Every 1.0s: next shell dchan speed
@@ -64,7 +70,7 @@ download: 84B/s
 ```
 
 ### show data channels
-```
+```shell
 $ watch -n 1 next shell dchan useful
 [1.1.1.1:63742 -> 2.2.2.2:42066]: avg: 34ms 52ms 56ms, drop: 0/894 0/294 0/54
 [1.1.1.1:63741 -> 2.2.2.2:50701]: avg: 34ms 52ms 56ms, drop: 0/894 0/294 0/54
