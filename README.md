@@ -53,3 +53,26 @@ Destination     Gateway         Genmask         Flags   MSS Window  irtt Iface
 8.8.8.8         0.0.0.0         255.255.255.255 UH        0 0          0 utun0
 ```
 
+### show speed
+```
+$ watch -n 1 next shell dchan speed
+
+Every 1.0s: next shell dchan speed
+
+upload:   66B/s
+download: 84B/s
+```
+
+### show data channels
+```
+$ watch -n 1 next shell dchan useful
+[1.1.1.1:63742 -> 2.2.2.2:42066]: avg: 34ms 52ms 56ms, drop: 0/894 0/294 0/54
+[1.1.1.1:63741 -> 2.2.2.2:50701]: avg: 34ms 52ms 56ms, drop: 0/894 0/294 0/54
+[1.1.1.1:63738 -> 2.2.2.2:42320]: avg: 36ms 55ms 56ms, drop: 0/894 0/294 0/54
+[1.1.1.1:63737 -> 2.2.2.2:47205]: avg: 36ms 54ms 55ms, drop: 0/894 0/294 0/54
+[1.1.1.1:63734 -> 2.2.2.2:47205]: avg: 36ms 56ms 55ms, drop: 0/894 0/294 0/54
+
+# avg: mean value of roundtrip time, (15min, 5min, 1min)
+# drop: packet count which is droped by remote. (droped packet / total packet)
+```
+
