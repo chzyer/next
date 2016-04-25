@@ -18,7 +18,7 @@ type Config struct {
 	DevId     int
 	UserName  string
 	Password  string
-	AesKey    string
+	AesKey    string `name:"key"`
 	RouteFile string `default:"routes.conf"`
 	Pprof     string `default:":10060"`
 

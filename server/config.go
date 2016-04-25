@@ -7,6 +7,7 @@ import (
 
 	"github.com/chzyer/flagly"
 	"github.com/chzyer/flow"
+	"github.com/chzyer/next/dchan"
 	"github.com/chzyer/next/ip"
 )
 
@@ -20,8 +21,10 @@ type Config struct {
 	DebugFlow  bool
 	DebugTun   bool
 
+	ChannelType string `name:"chantype" default:"tcp"`
+
 	HTTP     string    `desc:"listen http port" default:":11311"`
-	HTTPAes  string    `desc:"http aes key; required"`
+	HTTPAes  string    `name:"key" desc:"http aes key; required"`
 	HTTPCert string    `desc:"https cert file path"`
 	HTTPKey  string    `desc:"https key file path"`
 	Sock     string    `desc:"unixsock for interactive with" default:"/tmp/next.sock"`
@@ -42,6 +45,9 @@ func (c *Config) FlaglyVerify() error {
 	}
 	if c.DBPath == "" {
 		return errors.New("dbpath is empty")
+	}
+	if err := dchan.CheckType(c.ChannelType); err != nil {
+		return logex.Trace(err)
 	}
 
 	flow.DefaultDebug = c.DebugFlow

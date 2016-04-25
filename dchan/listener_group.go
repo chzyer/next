@@ -18,14 +18,16 @@ type ListenerGroup struct {
 	listeners      *list.List
 	onListenerExit chan struct{}
 	mutex          sync.RWMutex
+	chanType       string
 }
 
 // server communicate with channel
-func NewListenerGroup(f *flow.Flow, delegate SvrDelegate) *ListenerGroup {
+func NewListenerGroup(f *flow.Flow, chanType string, delegate SvrDelegate) *ListenerGroup {
 	s := &ListenerGroup{
 		delegate:       delegate,
 		listeners:      list.New(),
 		onListenerExit: make(chan struct{}, 1),
+		chanType:       chanType,
 	}
 	f.ForkTo(&s.flow, s.Close)
 	return s
@@ -91,7 +93,7 @@ func (s *ListenerGroup) removeListener(ln *Listener) {
 func (s *ListenerGroup) addNewListener() error {
 	var ln *Listener
 	var err error
-	ln, err = NewListener(s.flow, s.delegate, func() {
+	ln, err = NewListener(s.flow, s.delegate, s.chanType, func() {
 		s.removeListener(ln)
 	})
 	if err != nil {

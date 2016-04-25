@@ -64,4 +64,5 @@ type AuthResponse struct {
 	INet        string `json:"inet"`
 	Token       string `json:"token"`
 	DataChannel int    `json:"datachannel"`
+	ChannelType string `json:"channeltype"`
 }

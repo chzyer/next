@@ -18,6 +18,7 @@ type HttpApi struct {
 }
 
 type HttpDelegate interface {
+	GetChannelType() string
 	AllocIP() *ip.IP
 	GetGateway() *ip.IPNet
 	GetMTU() int

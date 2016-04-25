@@ -90,7 +90,10 @@ func (c *Client) initDataChannel(remoteCfg *uc.AuthResponse) (err error) {
 	}
 
 	delegate := &DchanDelegate{c}
-	dcCli := dchan.NewClient(c.flow, session, delegate, c.dcIn, c.dcOut)
+	dcCli, err := dchan.NewClient(c.flow, session, delegate, remoteCfg.ChannelType, c.dcIn, c.dcOut)
+	if err != nil {
+		return err
+	}
 	dcCli.AddHost(c.cfg.GetHostName(), port)
 	c.dcCli = dcCli
 	dcCli.Run()

@@ -51,19 +51,23 @@ type Client struct {
 // out is which datachannel can write for
 // all of channel share on fromDC, and have their owned toDC
 // client receive all packet from toDC and try to send them
-func NewClient(f *flow.Flow, s *packet.Session, delegate ClientDelegate,
-	toDC <-chan *packet.Packet, fromDC chan<- *packet.Packet) *Client {
+func NewClient(f *flow.Flow,
+	s *packet.Session, delegate ClientDelegate, chanTyp string,
+	toDC <-chan *packet.Packet, fromDC chan<- *packet.Packet) (*Client, error) {
 
+	if err := CheckType(chanTyp); err != nil {
+		return nil, logex.Trace(err)
+	}
 	cli := &Client{
 		delegate:    delegate,
 		connectChan: make(chan Slot, 1024),
 		session:     s,
 		fromDC:      fromDC,
-		chanFactory: TcpChanFactory{},
+		chanFactory: GetChannelType(chanTyp),
 	}
 	f.ForkTo(&cli.flow, cli.Close)
 	cli.group = NewGroup(cli.flow, toDC, fromDC)
-	return cli
+	return cli, nil
 }
 
 func (c *Client) CloseChannel(name string) error {

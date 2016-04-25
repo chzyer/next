@@ -76,7 +76,7 @@ func (s *Server) runHttp() {
 }
 
 func (s *Server) loadDataChannel() {
-	s.dchanGroup = dchan.NewListenerGroup(s.flow, s)
+	s.dchanGroup = dchan.NewListenerGroup(s.flow, s.cfg.ChannelType, s)
 	go s.dchanGroup.Run(4)
 }
 
@@ -165,6 +165,10 @@ func (s *Server) Close() {
 
 // -----------------------------------------------------------------------------
 // HTTP
+
+func (s *Server) GetChannelType() string {
+	return s.cfg.ChannelType
+}
 
 func (s *Server) AllocIP() *ip.IP {
 	return s.dhcp.Alloc()

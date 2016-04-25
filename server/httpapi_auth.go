@@ -43,6 +43,7 @@ func (h *HttpApi) Auth(req *mchan.Req) interface{} {
 		INet:        u.Net.String(),
 		MTU:         h.delegate.GetMTU(),
 		Token:       u.Token,
+		ChannelType: h.delegate.GetChannelType(),
 		DataChannel: h.delegate.GetDataChannel(),
 	}
 	h.delegate.OnNewUser(int(u.Id))

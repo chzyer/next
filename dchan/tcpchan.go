@@ -63,7 +63,7 @@ func (c *TcpChan) markInit(out chan<- *packet.Packet) {
 }
 
 func (c *TcpChan) IsSvrModeAndUninit() bool {
-	return c.session == nil || c.out == nil
+	return c.out == nil
 }
 
 func (c *TcpChan) GetSpeed() *statistic.SpeedInfo {
@@ -193,7 +193,6 @@ func (c *TcpChan) Close() {
 		return
 	}
 	if c.exitError != nil {
-		logex.DownLevel(1).Debug("where is exit")
 		logex.Info(c.Name(), "exit by:", c.exitError)
 	} else {
 		logex.Info(c.Name(), "exit manually")
