@@ -38,10 +38,15 @@ func (c *ShellUserAdd) FlaglyHandle(s *Server, rl *readline.Instance) error {
 	return err
 }
 
-type ShellUserShow struct{}
+type ShellUserShow struct {
+	All bool `name:"a"`
+}
 
-func (ShellUserShow) FlaglyHandle(s *Server, rl *readline.Instance) error {
+func (su ShellUserShow) FlaglyHandle(s *Server, rl *readline.Instance) error {
 	for _, u := range s.uc.Show() {
+		if u.Net == nil && !su.All {
+			continue
+		}
 		io.WriteString(rl, u.String()+"\n")
 	}
 	return nil
