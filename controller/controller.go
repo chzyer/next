@@ -158,6 +158,7 @@ loop:
 				continue
 			}
 			if req.Packet.Type == packet.DATA {
+				continue
 				logex.Debug("resend:", req.Packet.ReqId, req.Packet.Type.String())
 			} else {
 				logex.Info("resend:", req.Packet.ReqId, req.Packet.Type.String())

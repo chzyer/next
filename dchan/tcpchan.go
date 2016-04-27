@@ -53,7 +53,7 @@ func NewTcpChanServer(f *flow.Flow, session *packet.Session, conn net.Conn, dele
 		in:    make(chan *packet.Packet, 8),
 	}
 	f.ForkTo(&ch.flow, ch.Close)
-	ch.heartBeat = statistic.NewHeartBeatStage(ch.flow, 5*time.Second, ch)
+	ch.heartBeat = statistic.NewHeartBeatStage(ch.flow, time.Second, ch)
 	return ch
 }
 
