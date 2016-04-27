@@ -19,14 +19,17 @@ type ShellDebug struct {
 }
 
 type DebugFlow struct {
-	Name string `type:"[0]"`
+	Name string `type:"[0]" select:"dchan.Client,controller"`
 }
 
 type Flower interface {
 	GetFlow() *flow.Flow
 }
 
-func (d *DebugFlow) FlaglyHandle(c Client) error {
+func (d *DebugFlow) FlaglyHandle(c Client, h *flagly.Handler) error {
+	if d.Name == "" {
+		return flagly.Error("name is required")
+	}
 	var flower Flower
 	switch d.Name {
 	case "dchan.Client":
@@ -70,18 +73,30 @@ func (s ShellDebugGoroutine) FlaglyHandle(rl *readline.Instance) error {
 }
 
 type ShellDebugLog struct {
-	Level int `default:"-1" desc:"0: Debug, 1: Info, 2: Warn, 3: Error"`
+	Level string `type:"[0]" select:"debug,info,warn,error"`
 }
 
-func (s ShellDebugLog) FlaglyHandle(rl *readline.Instance) error {
-	if s.Level == -1 {
-		fmt.Fprintln(rl, "current log level:", logex.DebugLevel)
-		return nil
+func (s ShellDebugLog) FlaglyHandle() error {
+	var level int
+	switch s.Level {
+	case "debug":
+		level = 0
+	case "info":
+		level = 1
+	case "warn":
+		level = 2
+	case "error":
+		level = 3
+	default:
+		return fmt.Errorf("current log level: %v", logex.DebugLevel)
 	}
-	if s.Level > 3 {
-		return flagly.Error(fmt.Sprintf("invalid level: %v", s.Level))
+
+	if level == -1 {
+		return fmt.Errorf("current log level: %v", logex.DebugLevel)
 	}
-	logex.DebugLevel = s.Level
-	fmt.Fprintln(rl, "log level set to", logex.DebugLevel)
-	return nil
+	if level > 3 {
+		return flagly.Errorf(fmt.Sprintf("invalid level: %v", level))
+	}
+	logex.DebugLevel = level
+	return fmt.Errorf("log level set to %v", logex.DebugLevel)
 }

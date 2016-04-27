@@ -35,14 +35,26 @@ type ShellDebugLog struct {
 }
 
 func (s ShellDebugLog) FlaglyHandle(rl *readline.Instance) error {
-	if s.Level == -1 {
-		fmt.Fprintln(rl, "current log level:", logex.DebugLevel)
-		return nil
+	var level int
+	switch s.Level {
+	case "debug":
+		level = 0
+	case "info":
+		level = 1
+	case "warn":
+		level = 2
+	case "error":
+		level = 3
+	default:
+		return fmt.Errorf("current log level: %v", logex.DebugLevel)
 	}
-	if s.Level > 3 {
-		return flagly.Error(fmt.Sprintf("invalid level: %v", s.Level))
+
+	if level == -1 {
+		return fmt.Errorf("current log level: %v", logex.DebugLevel)
 	}
-	logex.DebugLevel = s.Level
-	fmt.Fprintln(rl, "log level set to", logex.DebugLevel)
-	return nil
+	if level > 3 {
+		return flagly.Errorf(fmt.Sprintf("invalid level: %v", level))
+	}
+	logex.DebugLevel = level
+	return fmt.Errorf("log level set to %v", logex.DebugLevel)
 }
