@@ -5,9 +5,8 @@ import (
 	"net/url"
 	"strings"
 
-	"gopkg.in/logex.v1"
-
 	"github.com/chzyer/flow"
+	"github.com/chzyer/logex"
 )
 
 type Config struct {

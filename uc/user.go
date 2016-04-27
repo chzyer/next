@@ -9,9 +9,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/chzyer/logex"
 	"github.com/chzyer/next/ip"
 	"github.com/chzyer/next/packet"
-	"gopkg.in/logex.v1"
 )
 
 var (

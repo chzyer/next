@@ -4,9 +4,9 @@ import (
 	"sync"
 
 	"github.com/chzyer/flow"
+	"github.com/chzyer/logex"
 	"github.com/chzyer/next/packet"
 	"github.com/chzyer/next/uc"
-	"gopkg.in/logex.v1"
 )
 
 type SvrDelegate interface {

@@ -1,10 +1,9 @@
 package server
 
 import (
+	"github.com/chzyer/logex"
 	"github.com/chzyer/next/mchan"
 	"github.com/chzyer/next/uc"
-
-	"gopkg.in/logex.v1"
 )
 
 var (

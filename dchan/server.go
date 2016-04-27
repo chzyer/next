@@ -4,7 +4,7 @@ import (
 	"sync"
 
 	"github.com/chzyer/flow"
-	"gopkg.in/logex.v1"
+	"github.com/chzyer/logex"
 )
 
 // Server side for operate datachannel for all user

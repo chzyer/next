@@ -2,8 +2,8 @@ package server
 
 import (
 	"github.com/chzyer/flow"
+	"github.com/chzyer/logex"
 	"github.com/chzyer/tunnel"
-	"gopkg.in/logex.v1"
 )
 
 type Tun struct {

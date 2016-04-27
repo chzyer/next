@@ -7,13 +7,13 @@ import (
 	"time"
 
 	"github.com/chzyer/flow"
+	"github.com/chzyer/logex"
 	"github.com/chzyer/next/controller"
 	"github.com/chzyer/next/dchan"
 	"github.com/chzyer/next/packet"
 	"github.com/chzyer/next/route"
 	"github.com/chzyer/next/uc"
 	"github.com/chzyer/next/util/clock"
-	"gopkg.in/logex.v1"
 )
 
 type Client struct {

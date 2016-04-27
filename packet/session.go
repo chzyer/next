@@ -1,8 +1,8 @@
 package packet
 
 import (
+	"github.com/chzyer/logex"
 	"github.com/chzyer/next/crypto"
-	"gopkg.in/logex.v1"
 )
 
 var (

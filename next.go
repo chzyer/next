@@ -13,12 +13,12 @@ import (
 
 	"github.com/chzyer/flagly"
 	"github.com/chzyer/flow"
+	"github.com/chzyer/logex"
 	"github.com/chzyer/next/client"
 	"github.com/chzyer/next/server"
 	"github.com/chzyer/next/uc"
 	"github.com/chzyer/next/util"
 	"github.com/chzyer/readline"
-	"gopkg.in/logex.v1"
 )
 
 type Next struct {

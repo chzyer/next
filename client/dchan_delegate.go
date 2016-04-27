@@ -1,8 +1,8 @@
 package client
 
 import (
+	"github.com/chzyer/logex"
 	"github.com/chzyer/next/dchan"
-	"gopkg.in/logex.v1"
 )
 
 type DchanDelegate struct {

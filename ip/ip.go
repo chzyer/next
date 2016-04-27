@@ -7,8 +7,7 @@ import (
 	"strings"
 
 	"github.com/chzyer/flagly"
-
-	"gopkg.in/logex.v1"
+	"github.com/chzyer/logex"
 )
 
 type IP [4]byte

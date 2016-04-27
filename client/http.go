@@ -7,8 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"gopkg.in/logex.v1"
-
+	"github.com/chzyer/logex"
 	"github.com/chzyer/next/mchan"
 	"github.com/chzyer/next/uc"
 	"github.com/chzyer/next/util"

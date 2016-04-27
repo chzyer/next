@@ -4,9 +4,9 @@ import (
 	"encoding/binary"
 	"io"
 
+	"github.com/chzyer/logex"
 	"github.com/chzyer/next/packet"
 	"github.com/chzyer/next/util"
-	"gopkg.in/logex.v1"
 )
 
 func (c *TcpChan) ReadL2(r io.Reader) (*packet.PacketL2, error) {

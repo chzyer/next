@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/chzyer/logex"
 	"github.com/chzyer/next/packet"
-	"gopkg.in/logex.v1"
 )
 
 var (

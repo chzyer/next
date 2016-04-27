@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/chzyer/flow"
+	"github.com/chzyer/logex"
 	"github.com/chzyer/next/packet"
 	"github.com/chzyer/next/statistic"
-	"gopkg.in/logex.v1"
 )
 
 var (

@@ -8,11 +8,11 @@ import (
 	"time"
 
 	"github.com/chzyer/flagly"
+	"github.com/chzyer/logex"
 	"github.com/chzyer/next/ip"
 	"github.com/chzyer/next/route"
 	"github.com/chzyer/next/util"
 	"github.com/chzyer/readline"
-	"gopkg.in/logex.v1"
 )
 
 type ShellRoute struct {

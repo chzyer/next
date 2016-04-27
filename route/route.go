@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/chzyer/flow"
+	"github.com/chzyer/logex"
 	"github.com/chzyer/next/ip"
 	"github.com/chzyer/next/util"
-	"gopkg.in/logex.v1"
 )
 
 var (

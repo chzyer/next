@@ -3,8 +3,7 @@ package packet
 import (
 	"crypto/rand"
 
-	"gopkg.in/logex.v1"
-
+	"github.com/chzyer/logex"
 	"github.com/chzyer/next/crypto"
 )
 

@@ -5,9 +5,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"gopkg.in/logex.v1"
-
 	"github.com/chzyer/flow"
+	"github.com/chzyer/logex"
 	"github.com/chzyer/next/packet"
 )
 

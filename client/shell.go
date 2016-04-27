@@ -9,14 +9,13 @@ import (
 
 	"github.com/chzyer/flagly"
 	"github.com/chzyer/flow"
+	"github.com/chzyer/logex"
 	"github.com/chzyer/next/client/clish"
 	"github.com/chzyer/next/controller"
 	"github.com/chzyer/next/dchan"
 	"github.com/chzyer/next/route"
 	"github.com/chzyer/readline"
 	"github.com/google/shlex"
-
-	"gopkg.in/logex.v1"
 )
 
 var (

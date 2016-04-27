@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/chzyer/flow"
+	"github.com/chzyer/logex"
 	"github.com/chzyer/next/packet"
-	"gopkg.in/logex.v1"
 )
 
 // add self monitor

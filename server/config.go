@@ -3,10 +3,9 @@ package server
 import (
 	"errors"
 
-	"gopkg.in/logex.v1"
-
 	"github.com/chzyer/flagly"
 	"github.com/chzyer/flow"
+	"github.com/chzyer/logex"
 	"github.com/chzyer/next/dchan"
 	"github.com/chzyer/next/ip"
 )

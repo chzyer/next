@@ -4,9 +4,8 @@ import (
 	"container/list"
 	"sync"
 
-	"gopkg.in/logex.v1"
-
 	"github.com/chzyer/flow"
+	"github.com/chzyer/logex"
 	"github.com/chzyer/next/util"
 )
 

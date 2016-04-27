@@ -5,7 +5,7 @@ import (
 	"math"
 	"runtime"
 
-	"gopkg.in/logex.v1"
+	"github.com/chzyer/logex"
 )
 
 var (
