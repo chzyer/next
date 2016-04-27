@@ -10,7 +10,7 @@ before_install:
   - go get github.com/chzyer/test
   - go get github.com/chzyer/tunnel
   - go get github.com/google/shlex
-  - go get gopkg.in/logex.v1
+  - go get github.com/chzyer/logex
 script:
   - go install github.com/chzyer/next/...
   - go test -v ./...
