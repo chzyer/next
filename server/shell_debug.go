@@ -31,7 +31,7 @@ func (s ShellDebugGoroutine) FlaglyHandle(rl *readline.Instance) error {
 }
 
 type ShellDebugLog struct {
-	Level int `default:"-1" desc:"0: Debug, 1: Info, 2: Warn, 3: Error"`
+	Level string `type:"[0]" select:"debug,info,warn,error"`
 }
 
 func (s ShellDebugLog) FlaglyHandle(rl *readline.Instance) error {
