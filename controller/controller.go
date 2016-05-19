@@ -160,7 +160,7 @@ loop:
 			logex.Debug("pop stage:", req.Packet.ReqId, req.Packet.Type.String())
 			if req.Packet.Type == packet.DATA {
 				continue
-				logex.Debug("resend:", req.Packet.ReqId, req.Packet.Type.String())
+				// logex.Debug("resend:", req.Packet.ReqId, req.Packet.Type.String())
 			} else {
 				logex.Info("resend:", req.Packet.ReqId, req.Packet.Type.String())
 			}

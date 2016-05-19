@@ -2,7 +2,6 @@ package server
 
 import (
 	"fmt"
-	"io"
 	"net"
 	"os"
 
@@ -59,7 +58,7 @@ func (s *Shell) handleConn(conn net.Conn) {
 	defer rl.Close()
 
 	fset.Context(rl, s.svr)
-	io.WriteString(rl, "Next Server CLI\n")
+	fmt.Fprintln(rl, Slogan)
 	for {
 		command, err := rl.Readline()
 		if err == readline.ErrInterrupt {
