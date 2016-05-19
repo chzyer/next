@@ -18,6 +18,13 @@ import (
 	"github.com/google/shlex"
 )
 
+var Slogan = `
+   _  _______  ________
+  / |/ / __/ |/_/_  __/
+ /    / _/_>  <  / /   
+/_/|_/___/_/|_| /_/    
+`
+
 var (
 	ErrNotReady = logex.Define("not ready")
 )
@@ -69,7 +76,7 @@ func (s *Shell) handleConn(conn net.Conn) {
 	hf := filepath.Join(homeDir, ".nexthistory")
 	cfg := readline.Config{
 		HistoryFile:  hf,
-		Prompt:       " -> ",
+		Prompt:       "client> ",
 		AutoComplete: readline.SegmentAutoComplete(fset.Completer()),
 	}
 	rl, err := readline.HandleConn(cfg, conn)
@@ -82,7 +89,7 @@ func (s *Shell) handleConn(conn net.Conn) {
 	fset.Context(rl, &client)
 
 	if rl.Config.FuncIsTerminal() {
-		fmt.Fprintln(rl, "Next Client CLI")
+		fmt.Fprintln(rl, Slogan)
 	}
 	for {
 		command, err := rl.Readline()

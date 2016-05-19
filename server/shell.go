@@ -12,6 +12,13 @@ import (
 	"github.com/google/shlex"
 )
 
+var Slogan = `
+   _  _______  ________
+  / |/ / __/ |/_/_  __/
+ /    / _/_>  <  / /   
+/_/|_/___/_/|_| /_/    
+`
+
 type Shell struct {
 	sock string
 	conn net.Listener
@@ -42,7 +49,7 @@ func (s *Shell) handleConn(conn net.Conn) {
 	}
 
 	cfg := readline.Config{
-		Prompt:       " -> ",
+		Prompt:       "server> ",
 		AutoComplete: readline.SegmentAutoComplete(fset.Completer()),
 	}
 	rl, err := readline.HandleConn(cfg, conn)
