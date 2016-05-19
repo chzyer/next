@@ -41,9 +41,9 @@ func (h *HttpChan) ReadL2(b *bufio.Reader) (*packet.PacketL2, error) {
 	return packet.NewPacketL2(iv, uint16(userId), payload, uint32(checksum)), nil
 }
 
-func (h *HttpChan) MarshalL2(p *packet.PacketL2) []byte {
+func (h *HttpChan) WriteL2(p *packet.PacketL2) []byte {
 	body := bytes.NewReader(p.Payload)
-	req, err := http.NewRequest("POST", "/data", body)
+	req, err := http.NewRequest("POST", "/download", body)
 	if err != nil {
 		panic(err)
 	}

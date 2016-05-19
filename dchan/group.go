@@ -165,7 +165,7 @@ func (g *Group) findUsefulLocked() []int {
 	for elem := g.chanList.Front(); elem != nil; elem = elem.Next() {
 		ch := elem.Value.(Channel)
 		latency, lastCommit := ch.Latency()
-		if lastCommit >= 5*time.Second {
+		if lastCommit >= 2*time.Second {
 			continue
 		}
 		infos = append(infos, &latencies{

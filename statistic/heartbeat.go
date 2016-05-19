@@ -17,7 +17,7 @@ type HeartBeatInfo struct {
 }
 
 func (s *HeartBeatInfo) dropStr() string {
-	return fmt.Sprintf("%v/%v", s.droped, s.count)
+	return fmt.Sprintf("%v", s.count)
 }
 
 func (s *HeartBeatInfo) rtt() time.Duration {
@@ -89,13 +89,11 @@ func (s *HeartBeat) isNeedClean() error {
 	} else if stat.count > 5 && stat.droped == stat.count {
 		return fmt.Errorf("too much droped packets")
 	}
-	min2 := s.getMin(2)
-	min5 := s.getMin(5)
-	if min2.rtt() > min5.rtt()*2 && min2.rtt() > 200*time.Millisecond {
-		return fmt.Errorf("rtt in 2min(%v) more than 2 times of 5mins(%v)",
-			min2.rtt(), min5.rtt(),
-		)
+	// 60 seconds
+	if time.Now().Unix()-atomic.LoadInt64(&s.lastCommit) > 10 {
+		return fmt.Errorf("more than 60s no commit")
 	}
+
 	return nil
 }
 
@@ -121,9 +119,10 @@ func (s HeartBeat) String() string {
 	min1 := s.getMin(1)
 	min5 := s.getMin(5)
 	min15 := s.getMin(15)
-	return fmt.Sprintf("avg: %v %v %v, drop: %v %v %v",
+	return fmt.Sprintf("RTT: %v %v %v, LC: %v, LT: %v",
 		min15.rtt(), min5.rtt(), min1.rtt(),
-		min15.dropStr(), min5.dropStr(), min1.dropStr(),
+		(time.Second * time.Duration(time.Now().Unix()-s.lastCommit)).String(),
+		s.lifeTime(),
 	)
 }
 
@@ -229,14 +228,6 @@ loop:
 			break loop
 		case <-ticker.C:
 			h.findElem(0) // just clean up
-			lastCommit := atomic.LoadInt64(&h.stat.lastCommit)
-			duration := time.Duration(time.Now().Unix()-lastCommit) * time.Second
-			if duration > 10*time.Second {
-				rtt := h.GetStat().getMin(1).rtt()
-				h.delegate.HeartBeatClean(fmt.Errorf(
-					"more than 10 second not response, current: %v", rtt))
-				break loop
-			}
 		case iv := <-h.receiveChan:
 			elem := h.findElem(iv.ReqId)
 			if elem == nil {

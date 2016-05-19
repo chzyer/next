@@ -157,6 +157,7 @@ loop:
 			if req == nil {
 				continue
 			}
+			logex.Debug("pop stage:", req.Packet.ReqId, req.Packet.Type.String())
 			if req.Packet.Type == packet.DATA {
 				continue
 				logex.Debug("resend:", req.Packet.ReqId, req.Packet.Type.String())

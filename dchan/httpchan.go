@@ -74,7 +74,7 @@ func (h *HttpChan) AddOnClose(f func()) {
 
 func (h *HttpChan) rawWrite(p *packet.Packet) error {
 	l2 := packet.WrapL2(h.session, p)
-	n, err := h.conn.Write(h.MarshalL2(l2))
+	n, err := h.conn.Write(h.WriteL2(l2))
 	h.speed.Upload(n)
 	return err
 }

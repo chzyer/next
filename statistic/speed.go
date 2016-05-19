@@ -48,19 +48,19 @@ func (s *Speed) checkOutdated() {
 }
 
 func (s *Speed) Upload(n int) {
-	s.checkOutdated()
+	// s.checkOutdated()
 	atomic.AddInt64(&s.upload, int64(n))
 }
 
 func (s *Speed) Download(n int) {
-	s.checkOutdated()
+	// s.checkOutdated()
 	atomic.AddInt64(&s.download, int64(n))
 }
 
 func (s *Speed) GetSpeed() *SpeedInfo {
-	s.checkOutdated()
+	// s.checkOutdated()
 	return &SpeedInfo{
-		Download: util.Unit(atomic.LoadInt64(&s.download)),
-		Upload:   util.Unit(atomic.LoadInt64(&s.upload)),
+		Download: util.Unit(atomic.SwapInt64(&s.download, 0)),
+		Upload:   util.Unit(atomic.SwapInt64(&s.upload, 0)),
 	}
 }

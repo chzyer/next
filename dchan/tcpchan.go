@@ -82,7 +82,7 @@ func (c *TcpChan) Run() {
 
 func (c *TcpChan) rawWrite(p *packet.Packet) error {
 	l2 := packet.WrapL2(c.session, p)
-	n, err := c.conn.Write(c.MarshalL2(l2))
+	n, err := c.conn.Write(c.WriteL2(l2))
 	c.speed.Upload(n)
 	return err
 }

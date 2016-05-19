@@ -1,6 +1,7 @@
 package dchan
 
 import (
+	"bufio"
 	"net"
 	"time"
 
@@ -41,4 +42,7 @@ type Channel interface {
 	GetSpeed() *statistic.SpeedInfo
 	ChanWrite() chan<- *packet.Packet
 	Run()
+
+	ReadL2(*bufio.Reader) (*packet.PacketL2, error)
+	WriteL2(*packet.PacketL2) []byte
 }
