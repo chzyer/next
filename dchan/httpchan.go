@@ -64,7 +64,7 @@ func (h *HttpChan) IsSvrModeAndUninit() bool {
 }
 
 func (h *HttpChan) HeartBeatClean(err error) {
-	h.exitError = fmt.Errorf("clean: %v", err)
+	h.exitError = logex.NewErrorf("clean: %v", err)
 	h.Close()
 }
 
@@ -105,7 +105,7 @@ loop:
 		}
 		if err != nil {
 			if !strings.Contains(err.Error(), "closed") {
-				h.exitError = fmt.Errorf("write error: %v", err)
+				h.exitError = logex.NewErrorf("write error: %v", err)
 			}
 			break
 		}
@@ -128,20 +128,20 @@ loop:
 				}
 			}
 			if !strings.Contains(err.Error(), "closed") {
-				h.exitError = fmt.Errorf("read error: %v", err)
+				h.exitError = logex.NewErrorf("read error: %v", err)
 			}
 			break
 		}
 
 		if err := l2.Verify(h.session); err != nil {
-			h.exitError = fmt.Errorf("verify error: %v", err)
+			h.exitError = logex.NewErrorf("verify error: %v", err)
 			break
 		}
 
 		if h.IsSvrModeAndUninit() {
 			out, err := h.delegate.Init(int(l2.UserId))
 			if err != nil {
-				h.exitError = fmt.Errorf("init error: %v", err)
+				h.exitError = logex.NewErrorf("init error: %v", err)
 				break
 			}
 			h.markInit(out)
@@ -150,7 +150,7 @@ loop:
 
 		p, err := packet.Unmarshal(l2.Payload)
 		if err != nil {
-			h.exitError = fmt.Errorf("client error: %v", err)
+			h.exitError = logex.NewErrorf("client error: %v", err)
 			break
 		}
 		h.speed.Download(p.Size())

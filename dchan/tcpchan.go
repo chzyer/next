@@ -71,7 +71,7 @@ func (c *TcpChan) GetSpeed() *statistic.SpeedInfo {
 }
 
 func (c *TcpChan) HeartBeatClean(err error) {
-	c.exitError = fmt.Errorf("clean: %v", err)
+	c.exitError = logex.NewErrorf("clean: %v", err)
 	c.Close()
 }
 
@@ -112,7 +112,7 @@ loop:
 			err = c.rawWrite(p)
 		}
 		if err != nil {
-			c.exitError = fmt.Errorf("write error: %v", err)
+			c.exitError = logex.NewErrorf("write error: %v", err)
 			break
 		}
 	}
@@ -132,18 +132,18 @@ loop:
 		c.conn.SetReadDeadline(time.Now().Add(10 * time.Second))
 		l2, err := c.ReadL2(buf)
 		if err != nil {
-			c.exitError = fmt.Errorf("read error: %v", err)
+			c.exitError = logex.NewErrorf("read error: %v", err)
 			break
 		}
 		if err := l2.Verify(c.session); err != nil {
-			c.exitError = fmt.Errorf("verify error: %v", err)
+			c.exitError = logex.NewErrorf("verify error: %v", err)
 			break
 		}
 
 		if c.IsSvrModeAndUninit() {
 			out, err := c.delegate.Init(int(l2.UserId))
 			if err != nil {
-				c.exitError = fmt.Errorf("init error: %v", err)
+				c.exitError = logex.NewErrorf("init error: %v", err)
 				break
 			}
 			c.markInit(out)
@@ -152,7 +152,7 @@ loop:
 
 		p, err := packet.Unmarshal(l2.Payload)
 		if err != nil {
-			c.exitError = fmt.Errorf("packet error: %v", err)
+			c.exitError = logex.NewErrorf("packet error: %v", err)
 			break
 		}
 
