@@ -1,7 +1,6 @@
 package dchan
 
 import (
-	"io"
 	"net"
 
 	"github.com/chzyer/flow"
@@ -18,8 +17,4 @@ func (HttpChanFactory) NewClient(f *flow.Flow, s *packet.Session, c net.Conn, o 
 
 func (HttpChanFactory) NewServer(f *flow.Flow, s *packet.Session, c net.Conn, d SvrInitDelegate) Channel {
 	return NewHttpChanServer(f, s, c, d)
-}
-
-func (HttpChanFactory) ReadL2(r io.Reader) (*packet.PacketL2, error) {
-	return nil, nil
 }

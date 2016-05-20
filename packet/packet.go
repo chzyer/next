@@ -43,11 +43,11 @@ func (p *Packet) Reply(payload []byte) *Packet {
 	if !p.Type.IsReq() {
 		panic("resp can't reply")
 	}
-	newP := &Packet{
-		Type:    Type(p.Type + 1),
-		payload: payload,
-		ReqId:   p.ReqId,
+	newP, err := newPacket(payload, Type(p.Type+1))
+	if err != nil {
+		panic(err)
 	}
+	newP.ReqId = p.ReqId
 	return newP
 }
 
@@ -58,13 +58,14 @@ func newPacket(payload []byte, t Type) (*Packet, error) {
 	if len(payload) > MaxPayloadLength {
 		return nil, ErrPayloadTooLarge.Format(len(payload))
 	}
+	if IsHasLoopbackPrefix && t == DATA {
+		payload = payload[len(loopbackPrefix):]
+	}
+
 	p := &Packet{
 		Type:    t,
 		payload: payload,
 		size:    len(payload),
-	}
-	if IsHasLoopbackPrefix && t == DATA {
-		p.payload = p.payload[len(loopbackPrefix):]
 	}
 	return p, nil
 }
@@ -93,13 +94,16 @@ func (p *Packet) SetReqId(r Reqider) {
 	}
 }
 
-func (p *Packet) Marshal() []byte {
-	ret := make([]byte, 8+len(p.payload)) // reqId(4) + type(2) + len(payload)
+func (p *Packet) Marshal(ret []byte) {
+	// ret := make([]byte, 8+len(p.payload)) // reqId(4) + type(2) + len(payload)
 	binary.BigEndian.PutUint32(ret[:4], p.ReqId)
 	binary.BigEndian.PutUint16(ret[4:6], uint16(p.Type))
 	binary.BigEndian.PutUint16(ret[6:8], uint16(len(p.payload)))
 	copy(ret[8:], p.payload)
-	return ret
+}
+
+func (p *Packet) TotalSize() int {
+	return 8 + p.size
 }
 
 func Unmarshal(b []byte) (*Packet, error) {
@@ -110,7 +114,7 @@ func Unmarshal(b []byte) (*Packet, error) {
 	typ := binary.BigEndian.Uint16(b[4:6])
 	length := binary.BigEndian.Uint16(b[6:8])
 	payload := make([]byte, int(length))
-	if len(b[8:]) != int(length) {
+	if len(b[8:]) < int(length) {
 		return nil, ErrInvalidLength.Format(int(length), len(b[8:]))
 	}
 	copy(payload, b[8:])

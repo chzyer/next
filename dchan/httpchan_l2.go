@@ -23,13 +23,14 @@ func (h *HttpChan) ReadL2(b *bufio.Reader) (*packet.PacketL2, error) {
 	if err != nil {
 		return nil, logex.Trace(err, "read l2 request")
 	}
+
 	iv, err := base64.URLEncoding.DecodeString(req.Header.Get(HttpKeyIV))
 	if err != nil {
 		return nil, logex.Trace(err, "error in decode iv")
 	}
 	userId, err := strconv.Atoi(req.Header.Get(HttpKeyUserId))
 	if err != nil {
-		return nil, logex.Trace(err, "error in decode userid")
+		return nil, logex.Trace(err, "error in decode userid", strconv.Quote(req.Header.Get(HttpKeyUserId)))
 	}
 	checksum, err := strconv.Atoi(req.Header.Get(HttpKeyChecksum))
 
@@ -37,6 +38,7 @@ func (h *HttpChan) ReadL2(b *bufio.Reader) (*packet.PacketL2, error) {
 	if err != nil {
 		return nil, logex.Trace(err, "read l2 payload")
 	}
+	req.Body.Close()
 
 	return packet.NewPacketL2(iv, uint16(userId), payload, uint32(checksum)), nil
 }

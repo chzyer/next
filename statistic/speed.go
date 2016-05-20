@@ -23,6 +23,9 @@ type Speed struct {
 	upload     int64
 	download   int64
 	submitTime int64
+
+	uploadLastTime   int64
+	downloadLastTime int64
 	sync.Mutex
 }
 
@@ -31,8 +34,8 @@ func NewSpeed() *Speed {
 }
 
 func (s *Speed) updateLocked(n int64) {
-	atomic.StoreInt64(&s.upload, 0)
-	atomic.StoreInt64(&s.download, 0)
+	atomic.StoreInt64(&s.uploadLastTime, atomic.SwapInt64(&s.upload, 0))
+	atomic.StoreInt64(&s.downloadLastTime, atomic.SwapInt64(&s.download, 0))
 	s.submitTime = n
 }
 
@@ -48,19 +51,18 @@ func (s *Speed) checkOutdated() {
 }
 
 func (s *Speed) Upload(n int) {
-	// s.checkOutdated()
+	s.checkOutdated()
 	atomic.AddInt64(&s.upload, int64(n))
 }
 
 func (s *Speed) Download(n int) {
-	// s.checkOutdated()
+	s.checkOutdated()
 	atomic.AddInt64(&s.download, int64(n))
 }
 
 func (s *Speed) GetSpeed() *SpeedInfo {
-	// s.checkOutdated()
 	return &SpeedInfo{
-		Download: util.Unit(atomic.SwapInt64(&s.download, 0)),
-		Upload:   util.Unit(atomic.SwapInt64(&s.upload, 0)),
+		Download: util.Unit(atomic.LoadInt64(&s.downloadLastTime)),
+		Upload:   util.Unit(atomic.LoadInt64(&s.uploadLastTime)),
 	}
 }

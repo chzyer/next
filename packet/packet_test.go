@@ -14,7 +14,8 @@ func TestPacket(t *testing.T) {
 	packet := New(payload, AUTH)
 	packet.ReqId = 1
 
-	data := packet.Marshal()
+	data := make([]byte, packet.TotalSize())
+	packet.Marshal(data)
 
 	packetDst, err := Unmarshal(data)
 	test.Nil(err)
@@ -24,4 +25,34 @@ func TestPacket(t *testing.T) {
 	test.Equal(packetDst.Payload(), payload)
 	test.Equal(packetDst, packet)
 
+}
+
+func BenchmarkPacketUnmarshal(b *testing.B) {
+	defer test.New(b)
+	payload := make([]byte, 24)
+	rand.Read(payload)
+	packet := New(payload, DATA)
+	packet.ReqId = 1
+	data := make([]byte, packet.TotalSize())
+	packet.Marshal(data)
+
+	for i := 0; i < b.N; i++ {
+		_, err := Unmarshal(data)
+		test.Nil(err)
+		b.SetBytes(int64(len(data)))
+	}
+}
+
+func BenchmarkPacketMarshal(b *testing.B) {
+	defer test.New(b)
+	payload := make([]byte, 24)
+	rand.Read(payload)
+
+	for i := 0; i < b.N; i++ {
+		packet := New(payload, DATA)
+		packet.ReqId = 1
+		data := make([]byte, packet.TotalSize())
+		packet.Marshal(data)
+		b.SetBytes(int64(len(payload)))
+	}
 }

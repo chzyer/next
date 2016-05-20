@@ -8,24 +8,24 @@ type Type int
 const (
 	_ Type = iota
 
-	AUTH   // payload: token
-	AUTH_R // payload: token
-	DATA   // payload: ip packet
-	DATA_R // payload: nil
+	AUTH   // 1: payload: token
+	AUTH_R // 2: payload: token
+	DATA   // 3: payload: ip packet
+	DATA_R // 4: payload: nil
 
-	HEARTBEAT   // payload: nil
-	HEARTBEAT_R // payload: nil
+	HEARTBEAT   // 5: payload: nil
+	HEARTBEAT_R // 6: payload: nil
 
-	NEWDC   // payload: nil
-	NEWDC_R // payload: json([port])
+	NEWDC   // 7: payload: nil
+	NEWDC_R // 8: payload: json([port])
 
 	// send bytes to remote
-	SPEED   // payload: [4096]bytes in random
-	SPEED_R // payload: nil
+	SPEED   // 9: payload: [4096]bytes in random
+	SPEED_R // 10: payload: nil
 
 	// let remote send N bytes to local
-	SPEED_REQ // payload: byte size(uint64)
-	SPEED_REQ_R
+	SPEED_REQ   // 11: payload: byte size(uint64)
+	SPEED_REQ_R // 12:
 
 	InvalidType
 )

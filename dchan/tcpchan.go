@@ -80,7 +80,7 @@ func (c *TcpChan) Run() {
 	go c.readLoop()
 }
 
-func (c *TcpChan) rawWrite(p *packet.Packet) error {
+func (c *TcpChan) rawWrite(p []*packet.Packet) error {
 	l2 := packet.WrapL2(c.session, p)
 	n, err := c.conn.Write(c.WriteL2(l2))
 	c.speed.Upload(n)
@@ -95,6 +95,8 @@ func (c *TcpChan) writeLoop() {
 		return
 	}
 
+	bufTimer := time.NewTimer(0)
+
 	heartBeatTicker := time.NewTicker(1 * time.Second)
 	defer heartBeatTicker.Stop()
 
@@ -106,10 +108,21 @@ loop:
 			break loop
 		case <-heartBeatTicker.C:
 			p := c.heartBeat.New()
-			err = c.rawWrite(p)
+			err = c.rawWrite([]*packet.Packet{p})
 			c.heartBeat.Add(p)
 		case p := <-c.in:
-			err = c.rawWrite(p)
+			bufTimer.Reset(time.Millisecond)
+			ps := []*packet.Packet{p}
+		buffering:
+			for {
+				select {
+				case <-bufTimer.C:
+					break buffering
+				case p := <-c.in:
+					ps = append(ps, p)
+				}
+			}
+			err = c.rawWrite(ps)
 		}
 		if err != nil {
 			c.exitError = logex.NewErrorf("write error: %v", err)
@@ -150,27 +163,29 @@ loop:
 			c.delegate.OnInited(c)
 		}
 
-		p, err := packet.Unmarshal(l2.Payload)
+		ps, err := l2.Unmarshal()
 		if err != nil {
 			c.exitError = logex.NewErrorf("packet error: %v", err)
 			break
 		}
 
-		c.speed.Download(p.Size())
-		switch p.Type {
-		case packet.HEARTBEAT:
-			select {
-			case c.in <- p.Reply(nil):
-			case <-c.flow.IsClose():
-				break loop
-			}
-		case packet.HEARTBEAT_R:
-			c.heartBeat.Receive(p)
-		default:
-			select {
-			case <-c.flow.IsClose():
-				break loop
-			case c.out <- p:
+		for _, p := range ps {
+			c.speed.Download(p.Size())
+			switch p.Type {
+			case packet.HEARTBEAT:
+				select {
+				case c.in <- p.Reply(nil):
+				case <-c.flow.IsClose():
+					break loop
+				}
+			case packet.HEARTBEAT_R:
+				c.heartBeat.Receive(p)
+			default:
+				select {
+				case <-c.flow.IsClose():
+					break loop
+				case c.out <- p:
+				}
 			}
 		}
 	}

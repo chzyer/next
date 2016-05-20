@@ -72,7 +72,7 @@ func (h *HttpChan) AddOnClose(f func()) {
 	h.flow.AddOnClose(f)
 }
 
-func (h *HttpChan) rawWrite(p *packet.Packet) error {
+func (h *HttpChan) rawWrite(p []*packet.Packet) error {
 	l2 := packet.WrapL2(h.session, p)
 	n, err := h.conn.Write(h.WriteL2(l2))
 	h.speed.Upload(n)
@@ -87,6 +87,8 @@ func (h *HttpChan) writeLoop() {
 		return
 	}
 
+	bufTimer := time.NewTimer(time.Millisecond)
+
 	heartBeatTicker := time.NewTicker(1 * time.Second)
 	defer heartBeatTicker.Stop()
 
@@ -98,10 +100,21 @@ loop:
 			break loop
 		case <-heartBeatTicker.C:
 			p := h.heartBeat.New()
-			err = h.rawWrite(p)
+			err = h.rawWrite([]*packet.Packet{p})
 			h.heartBeat.Add(p)
 		case p := <-h.in:
-			err = h.rawWrite(p)
+			bufTimer.Reset(time.Millisecond)
+			ps := []*packet.Packet{p}
+		buffering:
+			for {
+				select {
+				case <-bufTimer.C:
+					break buffering
+				case p := <-h.in:
+					ps = append(ps, p)
+				}
+			}
+			err = h.rawWrite(ps)
 		}
 		if err != nil {
 			if !strings.Contains(err.Error(), "closed") {
@@ -148,14 +161,16 @@ loop:
 			h.delegate.OnInited(h)
 		}
 
-		p, err := packet.Unmarshal(l2.Payload)
+		ps, err := l2.Unmarshal()
 		if err != nil {
 			h.exitError = logex.NewErrorf("client error: %v", err)
 			break
 		}
-		h.speed.Download(p.Size())
-		if !h.onRecePacket(p) {
-			break loop
+		for _, p := range ps {
+			h.speed.Download(p.Size())
+			if !h.onRecePacket(p) {
+				break loop
+			}
 		}
 	}
 }

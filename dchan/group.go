@@ -119,10 +119,25 @@ func (g *Group) GetUsefulChan() []Channel {
 
 func (g *Group) GetStatsInfo() string {
 	buf := bytes.NewBuffer(nil)
+	useful := g.GetUseful()
+	isInUseful := func(idx int) bool {
+		for _, a := range useful {
+			if idx == a {
+				return true
+			}
+		}
+		return false
+	}
+	idx := 0
 	g.findChannel(func(ch Channel) bool {
-		buf.WriteString(fmt.Sprintf("%v: %v\n",
-			ch.Name(), ch.GetStat().String(),
+		isuseful := ""
+		if isInUseful(idx) {
+			isuseful = " [*]"
+		}
+		buf.WriteString(fmt.Sprintf("%v: %v%v\n",
+			ch.Name(), ch.GetStat().String(), isuseful,
 		))
+		idx++
 		return false
 	})
 	return buf.String()
