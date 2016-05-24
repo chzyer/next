@@ -1,19 +1,15 @@
 package client
 
-import (
-	"github.com/chzyer/logex"
-	"github.com/chzyer/next/dchan"
-)
+import "github.com/chzyer/next/dchan"
 
 type DchanDelegate struct {
-	c *Client
+	client *Client
 }
 
 func (d *DchanDelegate) OnAllBackoff(cli *dchan.Client) {
-	logex.Info("all dchan is backoff")
-	d.c.NeedLogin()
+	d.client.OnAllBackoff()
 }
 
 func (d *DchanDelegate) OnLinkRefused() {
-	d.c.ctl.RequestNewDC()
+	d.client.ctl.RequestNewDC()
 }

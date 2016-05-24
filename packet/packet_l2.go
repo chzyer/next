@@ -67,6 +67,10 @@ func (p *PacketL2) Verify(s *Session) error {
 }
 
 func (p *PacketL2) Unmarshal() ([]*Packet, error) {
+	if p.verifyd == nil {
+		panic("packet l2 is not verifyed")
+	}
+
 	var ret []*Packet
 	payload := p.Payload
 	for len(payload) > 0 {

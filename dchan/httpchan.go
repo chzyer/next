@@ -49,6 +49,9 @@ func NewHttpChanServer(f *flow.Flow, s *packet.Session, conn net.Conn, delegate 
 		in:           make(chan *packet.Packet),
 		waitInitChan: make(chan struct{}, 1),
 	}
+	if tcpConn, ok := conn.(*net.TCPConn); ok {
+		tcpConn.SetNoDelay(false)
+	}
 	f.ForkTo(&hc.flow, hc.Close)
 	hc.heartBeat = statistic.NewHeartBeatStage(hc.flow, 5*time.Second, hc)
 	return hc

@@ -4,7 +4,8 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/md5"
-	"hash/crc32"
+
+	"github.com/klauspost/crc32"
 )
 
 var defaultIV = []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7}

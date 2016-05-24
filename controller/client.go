@@ -2,10 +2,8 @@ package controller
 
 import (
 	"encoding/json"
-	"time"
 
 	"github.com/chzyer/flow"
-	"github.com/chzyer/logex"
 	"github.com/chzyer/next/packet"
 )
 
@@ -35,11 +33,7 @@ func (c *Client) GetFlow() *flow.Flow {
 }
 
 func (c *Client) RequestNewDC() {
-	ok := c.SendTimeout(packet.New(nil, packet.NEWDC), time.Second)
-	if !ok {
-		// fail
-		logex.Info("request new dc timed out")
-	}
+	c.Send(packet.New(nil, packet.NEWDC))
 }
 
 func (c *Client) loop() {

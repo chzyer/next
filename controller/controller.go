@@ -23,15 +23,18 @@ type Controller struct {
 	fromDC  <-chan *packet.Packet
 	reqId   uint32
 	stage   *Stage
+
+	cancelBroadcast *flow.Broadcast
 }
 
 func NewController(f *flow.Flow, toDC chan<- *packet.Packet, fromDC <-chan *packet.Packet) *Controller {
 	ctl := &Controller{
-		timeout: 2 * time.Second,
-		in:      make(chan *Request, 8),
-		out:     make(chan *packet.Packet),
-		toDC:    toDC,
-		fromDC:  fromDC,
+		timeout:         2 * time.Second,
+		in:              make(chan *Request, 8),
+		out:             make(chan *packet.Packet),
+		toDC:            toDC,
+		fromDC:          fromDC,
+		cancelBroadcast: flow.NewBroadcast(),
 	}
 	f.ForkTo(&ctl.flow, ctl.Close)
 	ctl.stage = newStage()
@@ -39,6 +42,10 @@ func NewController(f *flow.Flow, toDC chan<- *packet.Packet, fromDC <-chan *pack
 	go ctl.writeLoop()
 	go ctl.resendLoop()
 	return ctl
+}
+
+func (c *Controller) CancelAll() {
+	c.cancelBroadcast.Notify()
 }
 
 func (c *Controller) GetOutChan() <-chan *packet.Packet {
@@ -50,6 +57,7 @@ func (c *Controller) GetReqId() uint32 {
 }
 
 func (c *Controller) Close() {
+	c.cancelBroadcast.Close()
 	c.flow.Close()
 }
 
@@ -86,6 +94,8 @@ func (c *Controller) send(req *Request) (*packet.Packet, error) {
 			case <-c.flow.IsClose():
 			}
 		}
+	case <-c.cancelBroadcast.Wait():
+		return nil, flow.ErrCanceled
 	case <-timeout:
 		return nil, ErrTimeout
 	case <-c.flow.IsClose():

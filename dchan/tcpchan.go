@@ -52,6 +52,10 @@ func NewTcpChanServer(f *flow.Flow, session *packet.Session, conn net.Conn, dele
 		speed: statistic.NewSpeed(),
 		in:    make(chan *packet.Packet, 8),
 	}
+	if tcpConn, ok := conn.(*net.TCPConn); ok {
+		tcpConn.SetNoDelay(false)
+	}
+
 	f.ForkTo(&ch.flow, ch.Close)
 	ch.heartBeat = statistic.NewHeartBeatStage(ch.flow, time.Second, ch)
 	return ch

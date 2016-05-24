@@ -101,6 +101,14 @@ func (c *Client) initDataChannel(remoteCfg *uc.AuthResponse) (err error) {
 	return nil
 }
 
+func (c *Client) OnAllBackoff() {
+	logex.Info("all dchan is backoff")
+	// need to break all sending packets in Controller
+	// to prevent somewhere(sendNewDC) blocking
+	c.ctl.CancelAll()
+	c.NeedLogin()
+}
+
 func (c *Client) NeedLogin() {
 	select {
 	case c.needLoginChan <- struct{}{}:

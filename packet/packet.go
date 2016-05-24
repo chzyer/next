@@ -18,7 +18,7 @@ var (
 	ErrPacketTooShort  = logex.Define("packet too short: %v")
 	ErrInvalidType     = logex.Define("invalid type: %v")
 	ErrInvalidToken    = logex.Define("invalid token")
-	ErrInvalidLength   = logex.Define("invalid length: %v, %v")
+	ErrInvalidLength   = logex.Define("invalid length, want:%v, got: %v")
 	ErrPayloadTooLarge = logex.Define("payload is too large: %v")
 )
 
