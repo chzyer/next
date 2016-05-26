@@ -2,7 +2,6 @@ package dchan
 
 import (
 	"fmt"
-	"net"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -16,7 +15,7 @@ import (
 )
 
 const (
-	ChanCount = 2
+	ChanCount = 1
 )
 
 type Slot struct {
@@ -126,7 +125,9 @@ func (c *Client) GetRunningChans() int {
 }
 
 func (c *Client) tryToCallBackoff() bool {
-	if atomic.LoadInt32(&c.runningChans) == 0 {
+	running := atomic.LoadInt32(&c.runningChans)
+	logex.Info("checking backoff, remain:", running)
+	if running == 0 {
 		c.callOnAllBackoff()
 		return true
 	}
@@ -154,7 +155,7 @@ func (c *Client) onChanExit(slot Slot) {
 
 func (c *Client) MakeNewChannel(slot Slot) error {
 	host := fmt.Sprintf("%v:%v", slot.Host, slot.Port)
-	conn, err := net.DialTimeout("tcp", host, 2*time.Second)
+	conn, err := c.chanFactory.DialTimeout(host, 2*time.Second)
 	if err != nil {
 		return logex.Trace(err)
 	}
@@ -207,8 +208,9 @@ loop:
 			if err != nil {
 				if strings.Contains(err.Error(), "connection refused") {
 					logex.Error("connect to", slot, "refused, remove it")
-					c.delegate.OnLinkRefused()
-					c.tryToCallBackoff()
+					if !c.tryToCallBackoff() {
+						c.delegate.OnLinkRefused()
+					}
 					continue
 				}
 				logex.Error(err, ",wait", waitTime)

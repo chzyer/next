@@ -95,6 +95,7 @@ func (h *HttpChan) writeLoop() {
 	heartBeatTicker := time.NewTicker(1 * time.Second)
 	defer heartBeatTicker.Stop()
 
+	var bufferingPackets []*packet.Packet
 	var err error
 loop:
 	for {
@@ -107,17 +108,18 @@ loop:
 			h.heartBeat.Add(p)
 		case p := <-h.in:
 			bufTimer.Reset(time.Millisecond)
-			ps := []*packet.Packet{p}
+			bufferingPackets = append(bufferingPackets, p)
 		buffering:
 			for {
 				select {
 				case <-bufTimer.C:
 					break buffering
 				case p := <-h.in:
-					ps = append(ps, p)
+					bufferingPackets = append(bufferingPackets, p)
 				}
 			}
-			err = h.rawWrite(ps)
+			err = h.rawWrite(bufferingPackets)
+			bufferingPackets = bufferingPackets[:0]
 		}
 		if err != nil {
 			if !strings.Contains(err.Error(), "closed") {

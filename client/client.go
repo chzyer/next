@@ -132,7 +132,6 @@ func (c *Client) onRelogin(remoteCfg *uc.AuthResponse) error {
 	if err := c.initDataChannel(remoteCfg); err != nil {
 		return logex.Trace(err)
 	}
-	logex.Info("request new dc")
 	c.ctl.RequestNewDC()
 	return nil
 }

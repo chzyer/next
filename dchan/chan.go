@@ -30,6 +30,9 @@ type SvrAuthDelegate interface {
 type ChannelFactory interface {
 	NewClient(*flow.Flow, *packet.Session, net.Conn, chan<- *packet.Packet) Channel
 	NewServer(*flow.Flow, *packet.Session, net.Conn, SvrInitDelegate) Channel
+
+	Listen(f *flow.Flow) (net.Listener, error)
+	DialTimeout(host string, timeout time.Duration) (net.Conn, error)
 }
 
 type Channel interface {

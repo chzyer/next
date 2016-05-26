@@ -15,6 +15,8 @@ func GetChannelType(name string) ChannelFactory {
 		return HttpChanFactory{}
 	case "tcp":
 		return TcpChanFactory{}
+	case "udp":
+		return NewUdpChanFactory()
 	default:
 		return nil
 	}

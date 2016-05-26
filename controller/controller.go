@@ -45,6 +45,7 @@ func NewController(f *flow.Flow, toDC chan<- *packet.Packet, fromDC <-chan *pack
 }
 
 func (c *Controller) CancelAll() {
+	logex.Info("cancel all operation")
 	c.cancelBroadcast.Notify()
 }
 

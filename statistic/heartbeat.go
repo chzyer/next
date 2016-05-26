@@ -2,11 +2,13 @@ package statistic
 
 import (
 	"container/list"
+	"encoding/binary"
 	"fmt"
 	"sync/atomic"
 	"time"
 
 	"github.com/chzyer/flow"
+	"github.com/chzyer/logex"
 	"github.com/chzyer/next/packet"
 )
 
@@ -105,6 +107,7 @@ func (s *HeartBeat) submitDrop(n int) {
 }
 
 func (s *HeartBeat) submitDuration(d time.Duration) {
+	logex.Debug(d.String())
 	slot := s.getSlot()
 	atomic.StoreInt64(&s.lastCommit, time.Now().Unix())
 	slot.total += d
@@ -162,7 +165,7 @@ func NewHeartBeatStage(f *flow.Flow, timeout time.Duration, d CleanDelegate) *He
 }
 
 func (h *HeartBeatStage) New() *packet.Packet {
-	return packet.New(nil, packet.HEARTBEAT)
+	return packet.New(h.Now(), packet.HEARTBEAT)
 }
 
 func (h *HeartBeatStage) Add(p *packet.Packet) {
@@ -170,6 +173,17 @@ func (h *HeartBeatStage) Add(p *packet.Packet) {
 	case h.addChan <- p:
 	case <-h.flow.IsClose():
 	}
+}
+
+func (h *HeartBeatStage) Now() []byte {
+	ret := make([]byte, 8)
+	binary.BigEndian.PutUint64(ret, uint64(time.Now().UnixNano()))
+	return ret
+}
+
+func (h *HeartBeatStage) GetTime(p *packet.Packet) time.Time {
+	nano := binary.BigEndian.Uint64(p.Payload())
+	return time.Unix(0, int64(nano))
 }
 
 func (h *HeartBeatStage) Receive(p *packet.Packet) {
@@ -234,6 +248,7 @@ loop:
 				// stat
 				continue
 			}
+
 			h.stat.submitDuration(time.Now().Sub(h.item(elem).time))
 			h.staging.Remove(elem)
 		case iv := <-h.addChan:

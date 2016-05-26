@@ -57,7 +57,7 @@ func NewTcpChanServer(f *flow.Flow, session *packet.Session, conn net.Conn, dele
 	}
 
 	f.ForkTo(&ch.flow, ch.Close)
-	ch.heartBeat = statistic.NewHeartBeatStage(ch.flow, time.Second, ch)
+	ch.heartBeat = statistic.NewHeartBeatStage(ch.flow, 5*time.Second, ch)
 	return ch
 }
 
@@ -104,6 +104,7 @@ func (c *TcpChan) writeLoop() {
 	heartBeatTicker := time.NewTicker(1 * time.Second)
 	defer heartBeatTicker.Stop()
 
+	var bufferingPackets []*packet.Packet
 	var err error
 loop:
 	for {
@@ -116,17 +117,18 @@ loop:
 			c.heartBeat.Add(p)
 		case p := <-c.in:
 			bufTimer.Reset(time.Millisecond)
-			ps := []*packet.Packet{p}
+			bufferingPackets = append(bufferingPackets, p)
 		buffering:
 			for {
 				select {
 				case <-bufTimer.C:
 					break buffering
 				case p := <-c.in:
-					ps = append(ps, p)
+					bufferingPackets = append(bufferingPackets, p)
 				}
 			}
-			err = c.rawWrite(ps)
+			err = c.rawWrite(bufferingPackets)
+			bufferingPackets = bufferingPackets[:0]
 		}
 		if err != nil {
 			c.exitError = logex.NewErrorf("write error: %v", err)
@@ -178,7 +180,7 @@ loop:
 			switch p.Type {
 			case packet.HEARTBEAT:
 				select {
-				case c.in <- p.Reply(nil):
+				case c.in <- p.Reply(c.heartBeat.Now()):
 				case <-c.flow.IsClose():
 					break loop
 				}

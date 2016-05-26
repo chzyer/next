@@ -20,8 +20,8 @@ type Listener struct {
 	onClose     func()
 }
 
-func NewListener(f *flow.Flow, d SvrDelegate, chanTyp string, c func()) (*Listener, error) {
-	ln, err := net.Listen("tcp", ":0")
+func NewListener(f *flow.Flow, d SvrDelegate, chanFactory ChannelFactory, c func()) (*Listener, error) {
+	ln, err := chanFactory.Listen(f)
 	if err != nil {
 		return nil, err
 	}
@@ -38,7 +38,7 @@ func NewListener(f *flow.Flow, d SvrDelegate, chanTyp string, c func()) (*Listen
 		port:        port,
 		delegate:    d,
 		onClose:     c,
-		chanFactory: GetChannelType(chanTyp),
+		chanFactory: chanFactory,
 	}
 	f.ForkTo(&dcln.flow, dcln.Close)
 	return dcln, nil

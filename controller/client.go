@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/chzyer/flow"
+	"github.com/chzyer/logex"
 	"github.com/chzyer/next/packet"
 )
 
@@ -14,6 +15,7 @@ type CliDelegate interface {
 type Client struct {
 	*Controller
 	toTun    chan<- []byte
+	newDC    chan struct{}
 	delegate CliDelegate
 }
 
@@ -23,8 +25,10 @@ func NewClient(f *flow.Flow, delegate CliDelegate, toDC chan<- *packet.Packet, f
 		Controller: ctl,
 		toTun:      toTun,
 		delegate:   delegate,
+		newDC:      make(chan struct{}, 1),
 	}
 	go cli.loop()
+	go cli.requestDCLoop()
 	return cli
 }
 
@@ -33,7 +37,26 @@ func (c *Client) GetFlow() *flow.Flow {
 }
 
 func (c *Client) RequestNewDC() {
-	c.Send(packet.New(nil, packet.NEWDC))
+	logex.Info("request new dc")
+	select {
+	case c.newDC <- struct{}{}:
+	default:
+	}
+}
+
+func (c *Client) requestDCLoop() {
+	c.flow.Add(1)
+	defer c.flow.DoneAndClose()
+
+loop:
+	for {
+		select {
+		case <-c.newDC:
+			c.Send(packet.New(nil, packet.NEWDC))
+		case <-c.flow.IsClose():
+			break loop
+		}
+	}
 }
 
 func (c *Client) loop() {
