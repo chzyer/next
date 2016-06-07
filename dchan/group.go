@@ -29,11 +29,11 @@ type Group struct {
 	usefulChans atomic.Value // []int
 	selectCase  []reflect.SelectCase
 
-	toDC   <-chan *packet.Packet
-	fromDC chan<- *packet.Packet
+	toDC   <-chan packet.Packets
+	fromDC chan<- packet.Packets
 }
 
-func NewGroup(f *flow.Flow, toDC <-chan *packet.Packet, fromDC chan<- *packet.Packet) *Group {
+func NewGroup(f *flow.Flow, toDC <-chan packet.Packets, fromDC chan<- packet.Packets) *Group {
 	newUseful := make(chan struct{}, 1)
 	g := &Group{
 		chanList:        list.New(),

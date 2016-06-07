@@ -50,7 +50,7 @@ func NewHttpChanServer(f *flow.Flow, s *packet.Session, conn net.Conn, delegate 
 		waitInitChan: make(chan struct{}, 1),
 
 		speed: statistic.NewSpeed(),
-		in:    make(chan *packet.Packet, 20),
+		in:    make(chan *packet.Packet, 4),
 	}
 	if tcpConn, ok := conn.(*net.TCPConn); ok {
 		tcpConn.SetNoDelay(false)
@@ -228,7 +228,7 @@ func (h *HttpChan) Close() {
 	if h.exitError != nil {
 		logex.Info(h.Name(), "exit by:", h.exitError)
 	} else {
-		logex.Info(h.Name(), "exit manually")
+		// logex.Info(h.Name(), "exit manually")
 	}
 
 	h.flow.Close()

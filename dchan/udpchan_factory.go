@@ -6,7 +6,7 @@ import (
 
 	"github.com/chzyer/flow"
 	"github.com/chzyer/next/packet"
-	"github.com/xtaci/kcp-go"
+	kcp "github.com/xtaci/kcp-go"
 )
 
 type UdpChanFactory struct {

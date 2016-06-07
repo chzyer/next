@@ -22,6 +22,8 @@ var (
 	ErrPayloadTooLarge = logex.Define("payload is too large: %v")
 )
 
+type Packets []*Packet
+
 // ReqId + Type + Payload
 type Packet struct {
 	ReqId   uint32
