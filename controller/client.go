@@ -19,7 +19,7 @@ type Client struct {
 	delegate CliDelegate
 }
 
-func NewClient(f *flow.Flow, delegate CliDelegate, toDC chan<- *packet.Packet, fromDC <-chan *packet.Packet, toTun chan<- []byte) *Client {
+func NewClient(f *flow.Flow, delegate CliDelegate, toDC packet.SendChan, fromDC packet.RecvChan, toTun chan<- []byte) *Client {
 	ctl := NewController(f, toDC, fromDC)
 	cli := &Client{
 		Controller: ctl,
@@ -59,6 +59,27 @@ loop:
 	}
 }
 
+func (c *Client) handlePacket(p *packet.Packet) bool {
+	switch p.Type {
+	case packet.DATA:
+		select {
+		case c.toTun <- p.Payload():
+		case <-c.flow.IsClose():
+			return false
+		}
+	case packet.NEWDC_R:
+		var port []int
+		json.Unmarshal(p.Payload(), &port)
+		if len(port) > 0 {
+			c.delegate.OnNewDC(port)
+		}
+	}
+	if p.Type.IsReq() {
+		c.Send(p.Reply(nil))
+	}
+	return true
+}
+
 func (c *Client) loop() {
 	c.flow.Add(1)
 	defer c.flow.DoneAndClose()
@@ -67,22 +88,10 @@ loop:
 	for {
 		select {
 		case pRecv := <-out:
-			switch pRecv.Type {
-			case packet.DATA:
-				select {
-				case c.toTun <- pRecv.Payload():
-				case <-c.flow.IsClose():
+			for _, p := range pRecv {
+				if !c.handlePacket(p) {
 					break loop
 				}
-			case packet.NEWDC_R:
-				var port []int
-				json.Unmarshal(pRecv.Payload(), &port)
-				if len(port) > 0 {
-					c.delegate.OnNewDC(port)
-				}
-			}
-			if pRecv.Type.IsReq() {
-				c.Send(pRecv.Reply(nil))
 			}
 		case <-c.flow.IsClose():
 			break loop

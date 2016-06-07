@@ -20,7 +20,7 @@ func (HttpChanFactory) DialTimeout(host string, timeout time.Duration) (net.Conn
 	return net.DialTimeout("tcp", host, timeout)
 }
 
-func (HttpChanFactory) NewClient(f *flow.Flow, s *packet.Session, c net.Conn, o chan<- *packet.Packet) Channel {
+func (HttpChanFactory) NewClient(f *flow.Flow, s *packet.Session, c net.Conn, o packet.SendChan) Channel {
 	return NewHttpChanClient(f, s, c, o)
 }
 

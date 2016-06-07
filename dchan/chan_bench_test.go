@@ -23,9 +23,9 @@ func BenchmarkAllGroup(b *testing.B) {
 	defer test.New(b)
 
 	f := flow.New()
-	toDC := make(chan *packet.Packet)
-	fromDC := make(chan *packet.Packet)
-	g := NewGroup(f, toDC, fromDC)
+	toDC := packet.NewChan(0)
+	fromDC := packet.NewChan(0)
+	g := NewGroup(f, toDC.Recv(), fromDC.Send())
 	go g.Run()
 	defer f.Close()
 
@@ -38,12 +38,17 @@ func BenchmarkAllGroup(b *testing.B) {
 	test.Nil(err)
 
 	session := packet.NewSessionCli(0, token)
-	ch := cf.NewClient(f, session, conn, fromDC)
+	ch := cf.NewClient(f, session, conn, fromDC.Send())
 	go ch.Run()
 	g.AddWithAutoRemove(ch)
 
+	data := make([]*packet.Packet, 10)
+	for idx := range data {
+		data[idx] = dataPacket
+	}
+
 	for i := 0; i < b.N; i++ {
-		toDC <- dataPacket
+		g.Send(data)
 	}
 }
 
@@ -60,10 +65,10 @@ func BenchmarkAllTCPChan(b *testing.B) {
 }
 
 type dumpSvrInitDelegate struct {
-	ch chan *packet.Packet
+	ch packet.SendChan
 }
 
-func (d *dumpSvrInitDelegate) Init(uid int) (chan<- *packet.Packet, error) {
+func (d *dumpSvrInitDelegate) Init(uid int) (packet.SendChan, error) {
 	return d.ch, nil
 }
 
@@ -92,11 +97,11 @@ func testFactory(f *flow.Flow, b *testing.B, cf ChannelFactory) {
 	conn, err := cf.DialTimeout(getAddr(ln.Addr()), time.Second)
 	test.Nil(err)
 	session := packet.NewSessionCli(0, token)
-	ch := make(chan *packet.Packet)
-	cli := cf.NewClient(f, session, conn, ch)
+	ch := packet.NewChan(0)
+	cli := cf.NewClient(f, session, conn, ch.Send())
 	go cli.Run()
 	for i := 0; i < b.N; i++ {
-		cli.ChanWrite() <- dataPacket
+		cli.ChanWrite().SendOneSafe(f, dataPacket)
 	}
 }
 
@@ -105,16 +110,20 @@ func testFactoryListen(f *flow.Flow, b *testing.B, cf ChannelFactory, ln net.Lis
 	test.Nil(err)
 
 	session := packet.NewSessionCli(0, token)
-	ch := make(chan *packet.Packet, 2)
-	delegate := &dumpSvrInitDelegate{ch}
+	ch := packet.NewChan(2)
+	delegate := &dumpSvrInitDelegate{ch.Send()}
 	svr := cf.NewServer(f, session, conn, delegate)
 	go svr.Run()
 
 loop:
 	for {
 		select {
-		case p := <-ch:
-			b.SetBytes(int64(p.Size()))
+		case ps := <-ch:
+			s := int64(0)
+			for _, p := range ps {
+				s += int64(p.Size())
+			}
+			b.SetBytes(s)
 		case <-f.IsClose():
 			break loop
 		}

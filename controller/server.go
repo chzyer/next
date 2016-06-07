@@ -35,6 +35,25 @@ func (s *Server) NotifyDataChannel(port []int) {
 	return
 }
 
+func (s *Server) handlePacket(p *packet.Packet) bool {
+	switch p.Type {
+	case packet.NEWDC:
+		ret, _ := json.Marshal(s.ports)
+		s.Send(p.Reply(ret))
+		return true
+	case packet.DATA:
+		select {
+		case s.toTun <- p.Payload():
+		case <-s.flow.IsClose():
+			return false
+		}
+	}
+	if p.Type.IsReq() {
+		s.Send(p.Reply(nil))
+	}
+	return true
+}
+
 func (s *Server) recvLoop() {
 	s.flow.Add(1)
 	defer s.flow.DoneAndClose()
@@ -43,22 +62,12 @@ func (s *Server) recvLoop() {
 loop:
 	for {
 		select {
-		case p := <-out:
-			logex.Debug(p.Type)
-			switch p.Type {
-			case packet.NEWDC:
-				ret, _ := json.Marshal(s.ports)
-				s.Send(p.Reply(ret))
-				continue
-			case packet.DATA:
-				select {
-				case s.toTun <- p.Payload():
-				case <-s.flow.IsClose():
-					break loop
+		case ps := <-out:
+			for _, p := range ps {
+				logex.Debug(p.Type)
+				if !s.handlePacket(p) {
+					return
 				}
-			}
-			if p.Type.IsReq() {
-				s.Send(p.Reply(nil))
 			}
 		case <-s.flow.IsClose():
 			break loop

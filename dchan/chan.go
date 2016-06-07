@@ -13,13 +13,13 @@ import (
 type SvrDelegate interface {
 	SvrAuthDelegate
 	GetUserChannelFromDataChannel(id int) (
-		fromUser <-chan *packet.Packet, toUser chan<- *packet.Packet, err error)
+		fromUser packet.RecvChan, toUser packet.SendChan, err error)
 	OnDChanUpdate([]int)
 	OnNewChannel(Channel)
 }
 
 type SvrInitDelegate interface {
-	Init(id int) (toUser chan<- *packet.Packet, err error)
+	Init(id int) (toUser packet.SendChan, err error)
 	OnInited(ch Channel)
 }
 
@@ -28,7 +28,7 @@ type SvrAuthDelegate interface {
 }
 
 type ChannelFactory interface {
-	NewClient(*flow.Flow, *packet.Session, net.Conn, chan<- *packet.Packet) Channel
+	NewClient(*flow.Flow, *packet.Session, net.Conn, packet.SendChan) Channel
 	NewServer(*flow.Flow, *packet.Session, net.Conn, SvrInitDelegate) Channel
 
 	Listen(f *flow.Flow) (net.Listener, error)
@@ -43,7 +43,7 @@ type Channel interface {
 	GetUserId() (int, error)
 	AddOnClose(func())
 	GetSpeed() *statistic.SpeedInfo
-	ChanWrite() chan<- *packet.Packet
+	ChanWrite() packet.SendChan
 	Run()
 
 	ReadL2(*bufio.Reader) (*packet.PacketL2, error)

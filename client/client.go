@@ -28,8 +28,8 @@ type Client struct {
 	ctl *controller.Client
 
 	dcCli *dchan.Client
-	dcIn  chan *packet.Packet
-	dcOut chan *packet.Packet
+	dcIn  packet.Chan
+	dcOut packet.Chan
 
 	needLoginChan chan struct{}
 }
@@ -38,8 +38,8 @@ func New(cfg *Config, f *flow.Flow) *Client {
 	cli := &Client{
 		cfg:           cfg,
 		flow:          f,
-		dcIn:          make(chan *packet.Packet),
-		dcOut:         make(chan *packet.Packet),
+		dcIn:          make(packet.Chan),
+		dcOut:         make(packet.Chan),
 		HTTP:          NewHTTP(cfg.Host, cfg.UserName, cfg.Password, []byte(cfg.AesKey)),
 		needLoginChan: make(chan struct{}, 1),
 	}
@@ -90,7 +90,7 @@ func (c *Client) initDataChannel(remoteCfg *uc.AuthResponse) (err error) {
 	}
 
 	delegate := &DchanDelegate{c}
-	dcCli, err := dchan.NewClient(c.flow, session, delegate, remoteCfg.ChannelType, c.dcIn, c.dcOut)
+	dcCli, err := dchan.NewClient(c.flow, session, delegate, remoteCfg.ChannelType, c.dcIn.Recv(), c.dcOut.Send())
 	if err != nil {
 		return err
 	}
@@ -156,7 +156,7 @@ func (c *Client) onFirstLogin(remoteCfg *uc.AuthResponse) error {
 		return logex.Trace(err)
 	}
 
-	if err := c.initController(c.dcIn, c.dcOut, tunIn); err != nil {
+	if err := c.initController(c.dcIn.Send(), c.dcOut.Recv(), tunIn); err != nil {
 		return logex.Trace(err)
 	}
 
@@ -189,7 +189,7 @@ func (c *Client) initRouteTable() {
 	}
 }
 
-func (c *Client) initController(toDC chan<- *packet.Packet, fromDC <-chan *packet.Packet, toTun chan<- []byte) error {
+func (c *Client) initController(toDC packet.SendChan, fromDC packet.RecvChan, toTun chan<- []byte) error {
 	c.ctl = controller.NewClient(c.flow, c, toDC, fromDC, toTun)
 	c.ctl.RequestNewDC()
 	return nil

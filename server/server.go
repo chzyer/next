@@ -135,7 +135,7 @@ func (s *Server) OnNewUser(userId int) {
 
 // controller -> user -> datachannel
 func (s *Server) GetUserChannelFromDataChannel(id int) (
-	fromUser <-chan *packet.Packet, toUser chan<- *packet.Packet, err error) {
+	fromUser packet.RecvChan, toUser packet.SendChan, err error) {
 	u := s.uc.FindId(id)
 	if u == nil {
 		err = uc.ErrUserNotFound.Trace()

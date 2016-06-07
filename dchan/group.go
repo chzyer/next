@@ -29,11 +29,11 @@ type Group struct {
 	usefulChans atomic.Value // []int
 	selectCase  []reflect.SelectCase
 
-	toDC   <-chan packet.Packets
-	fromDC chan<- packet.Packets
+	toDC   packet.RecvChan
+	fromDC packet.SendChan
 }
 
-func NewGroup(f *flow.Flow, toDC <-chan packet.Packets, fromDC chan<- packet.Packets) *Group {
+func NewGroup(f *flow.Flow, toDC packet.RecvChan, fromDC packet.SendChan) *Group {
 	newUseful := make(chan struct{}, 1)
 	g := &Group{
 		chanList:        list.New(),
@@ -60,13 +60,12 @@ func (s *Group) sendLoop() {
 
 loop:
 	for !s.flow.IsClosed() {
-		select {
-		case p := <-s.toDC:
-			logex.Debug(p)
-			s.Send(p)
-		case <-s.flow.IsClose():
+		pkt := s.toDC.RecvAll(s.flow)
+		if pkt == nil {
 			break loop
 		}
+		logex.Debug(pkt)
+		s.Send(pkt)
 	}
 }
 
@@ -233,7 +232,7 @@ func (g *Group) GetUseful() []int {
 	return useful.([]int)
 }
 
-func (g *Group) Send(p *packet.Packet) {
+func (g *Group) Send(p []*packet.Packet) {
 	pv := reflect.ValueOf(p)
 resend:
 	g.chanListGuard.RLock()

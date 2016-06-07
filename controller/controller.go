@@ -18,20 +18,20 @@ type Controller struct {
 	timeout time.Duration
 	flow    *flow.Flow
 	in      chan *Request
-	out     chan *packet.Packet
-	toDC    chan<- *packet.Packet
-	fromDC  <-chan *packet.Packet
+	out     packet.Chan
+	toDC    packet.SendChan
+	fromDC  packet.RecvChan
 	reqId   uint32
 	stage   *Stage
 
 	cancelBroadcast *flow.Broadcast
 }
 
-func NewController(f *flow.Flow, toDC chan<- *packet.Packet, fromDC <-chan *packet.Packet) *Controller {
+func NewController(f *flow.Flow, toDC packet.SendChan, fromDC packet.RecvChan) *Controller {
 	ctl := &Controller{
 		timeout:         2 * time.Second,
 		in:              make(chan *Request, 8),
-		out:             make(chan *packet.Packet),
+		out:             make(packet.Chan),
 		toDC:            toDC,
 		fromDC:          fromDC,
 		cancelBroadcast: flow.NewBroadcast(),
@@ -49,8 +49,8 @@ func (c *Controller) CancelAll() {
 	c.cancelBroadcast.Notify()
 }
 
-func (c *Controller) GetOutChan() <-chan *packet.Packet {
-	return c.out
+func (c *Controller) GetOutChan() packet.RecvChan {
+	return c.out.Recv()
 }
 
 func (c *Controller) GetReqId() uint32 {
@@ -121,6 +121,32 @@ func (c *Controller) Send(req *packet.Packet) {
 	c.send(&Request{Packet: req})
 }
 
+func (c *Controller) handlePacket(ps []*packet.Packet) bool {
+	newPs := make([]*packet.Packet, 0, len(ps))
+	for _, p := range ps {
+		if p.Type.IsResp() {
+			// println("I got Reply:", p.IV.ReqId)
+			req := c.stage.Remove(p.ReqId)
+			if req != nil && req.Reply != nil {
+				select {
+				case req.Reply <- p:
+				default:
+				}
+			}
+		} else {
+			newPs = append(newPs, p)
+		}
+	}
+
+	// println("I need Reply to:", p.IV.ReqId)
+	select {
+	case c.out <- newPs:
+	case <-c.flow.IsClose():
+		return false
+	}
+	return true
+}
+
 func (c *Controller) readLoop() {
 	c.flow.Add(1)
 	defer c.flow.DoneAndClose()
@@ -129,22 +155,8 @@ loop:
 		select {
 		case <-c.flow.IsClose():
 			break loop
-		case p := <-c.fromDC:
-			if p.Type.IsResp() {
-				// println("I got Reply:", p.IV.ReqId)
-				req := c.stage.Remove(p.ReqId)
-				if req != nil && req.Reply != nil {
-					select {
-					case req.Reply <- p:
-					default:
-					}
-				}
-			}
-
-			// println("I need Reply to:", p.IV.ReqId)
-			select {
-			case c.out <- p:
-			case <-c.flow.IsClose():
+		case ps := <-c.fromDC:
+			if !c.handlePacket(ps) {
 				break loop
 			}
 		}
@@ -189,6 +201,10 @@ func (c *Controller) writeLoop() {
 	c.flow.Add(1)
 	defer c.flow.DoneAndClose()
 
+	var bufferPackets []*packet.Packet
+	timer := time.NewTimer(time.Millisecond)
+	timer.Stop()
+
 loop:
 	for {
 		select {
@@ -199,13 +215,28 @@ loop:
 			if req.Packet.Type.IsReq() {
 				req.Packet.SetReqId(c)
 				c.stage.Add(req)
-				// println("I add to stage: ",
-				//	req.Packet.IV.ReqId, req.Packet.Type.String())
-			} else {
-				// println("I reply to:", req.Packet.IV.ReqId)
 			}
+			bufferPackets = append(bufferPackets, req.Packet)
+
+			timer.Reset(time.Millisecond)
+		buffering:
+			for {
+				select {
+				case req := <-c.in:
+					if req.Packet.Type.IsReq() {
+						req.Packet.SetReqId(c)
+						c.stage.Add(req)
+					}
+					bufferPackets = append(bufferPackets, req.Packet)
+				case <-timer.C:
+					break buffering
+				}
+			}
+
+			// do buffer
 			select {
-			case c.toDC <- req.Packet:
+			case c.toDC <- bufferPackets:
+				bufferPackets = nil
 			case <-c.flow.IsClose():
 				break loop
 			}

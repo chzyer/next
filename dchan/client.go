@@ -43,7 +43,7 @@ type Client struct {
 	delegate ClientDelegate
 
 	ports       []int
-	fromDC      chan<- *packet.Packet
+	fromDC      packet.SendChan
 	connectChan chan Slot
 }
 
@@ -52,7 +52,7 @@ type Client struct {
 // client receive all packet from toDC and try to send them
 func NewClient(f *flow.Flow,
 	s *packet.Session, delegate ClientDelegate, chanTyp string,
-	toDC <-chan *packet.Packet, fromDC chan<- *packet.Packet) (*Client, error) {
+	toDC packet.RecvChan, fromDC packet.SendChan) (*Client, error) {
 
 	if err := CheckType(chanTyp); err != nil {
 		return nil, logex.Trace(err)

@@ -52,10 +52,10 @@ type listenerDelegate struct {
 	delegate SvrDelegate
 }
 
-func (d *listenerDelegate) Init(userId int) (toUser chan<- *packet.Packet, err error) {
+func (d *listenerDelegate) Init(userId int) (toUser packet.SendChan, err error) {
 	_, toUser, err = d.delegate.GetUserChannelFromDataChannel(userId)
 	if err != nil {
-		return nil, err
+		return toUser, err
 	}
 	return toUser, nil
 }

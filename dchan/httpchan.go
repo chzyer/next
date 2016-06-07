@@ -32,11 +32,11 @@ type HttpChan struct {
 
 	exitError error
 
-	in  chan *packet.Packet
-	out chan<- *packet.Packet
+	in  packet.Chan
+	out packet.SendChan
 }
 
-func NewHttpChanClient(f *flow.Flow, session *packet.Session, conn net.Conn, out chan<- *packet.Packet) *HttpChan {
+func NewHttpChanClient(f *flow.Flow, session *packet.Session, conn net.Conn, out packet.SendChan) *HttpChan {
 	hc := NewHttpChanServer(f, session, conn, nil)
 	hc.markInit(out)
 	return hc
@@ -50,7 +50,7 @@ func NewHttpChanServer(f *flow.Flow, s *packet.Session, conn net.Conn, delegate 
 		waitInitChan: make(chan struct{}, 1),
 
 		speed: statistic.NewSpeed(),
-		in:    make(chan *packet.Packet, 4),
+		in:    packet.NewChan(4),
 	}
 	if tcpConn, ok := conn.(*net.TCPConn); ok {
 		tcpConn.SetNoDelay(false)
@@ -60,7 +60,7 @@ func NewHttpChanServer(f *flow.Flow, s *packet.Session, conn net.Conn, delegate 
 	return hc
 }
 
-func (c *HttpChan) markInit(out chan<- *packet.Packet) {
+func (c *HttpChan) markInit(out packet.SendChan) {
 	c.out = out
 	c.waitInitChan <- struct{}{}
 }
@@ -98,12 +98,9 @@ func (h *HttpChan) writeLoop() {
 		return
 	}
 
-	bufTimer := time.NewTimer(time.Millisecond)
-
 	heartBeatTicker := time.NewTicker(1 * time.Second)
 	defer heartBeatTicker.Stop()
 
-	var bufferingPackets []*packet.Packet
 	var err error
 loop:
 	for {
@@ -115,19 +112,7 @@ loop:
 			err = h.rawWrite([]*packet.Packet{p})
 			h.heartBeat.Add(p)
 		case p := <-h.in:
-			bufTimer.Reset(time.Millisecond)
-			bufferingPackets = append(bufferingPackets, p)
-		buffering:
-			for {
-				select {
-				case <-bufTimer.C:
-					break buffering
-				case p := <-h.in:
-					bufferingPackets = append(bufferingPackets, p)
-				}
-			}
-			err = h.rawWrite(bufferingPackets)
-			bufferingPackets = bufferingPackets[:0]
+			err = h.rawWrite(p)
 		}
 		if err != nil {
 			if !strings.Contains(err.Error(), "closed") {
@@ -179,31 +164,30 @@ loop:
 			h.exitError = logex.NewErrorf("client error: %v", err)
 			break
 		}
-		for _, p := range ps {
-			h.speed.Download(p.Size())
-			if !h.onRecePacket(p) {
-				break loop
-			}
+		if !h.onRecePacket(ps) {
+			break loop
 		}
 	}
 }
 
-func (h *HttpChan) onRecePacket(p *packet.Packet) bool {
-	switch p.Type {
-	case packet.HEARTBEAT:
-		select {
-		case h.in <- p.Reply(nil):
-		case <-h.flow.IsClose():
-			return false
+func (h *HttpChan) onRecePacket(ps []*packet.Packet) bool {
+	buffer := make([]*packet.Packet, 0, len(ps))
+	for _, p := range ps {
+		h.speed.Download(p.Size())
+		switch p.Type {
+		case packet.HEARTBEAT:
+			if !h.in.SendSafe(h.flow, []*packet.Packet{p.Reply(nil)}) {
+				return false
+			}
+		case packet.HEARTBEAT_R:
+			h.heartBeat.Receive(p)
+		default:
+			buffer = append(buffer, p)
 		}
-	case packet.HEARTBEAT_R:
-		h.heartBeat.Receive(p)
-	default:
-		select {
-		case <-h.flow.IsClose():
-			return false
-		case h.out <- p:
-		}
+	}
+
+	if !h.out.SendSafe(h.flow, ps) {
+		return false
 	}
 	return true
 }
@@ -212,8 +196,8 @@ func (h *HttpChan) Latency() (time.Duration, time.Duration) {
 	return h.heartBeat.GetLatency()
 }
 
-func (h *HttpChan) ChanWrite() chan<- *packet.Packet {
-	return h.in
+func (h *HttpChan) ChanWrite() packet.SendChan {
+	return h.in.Send()
 }
 
 func (h *HttpChan) AddOnClose(f func()) {

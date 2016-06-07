@@ -136,8 +136,8 @@ type User struct {
 	*UserInfo
 	Net   *ip.IP
 	Token string
-	chan1 chan *packet.Packet
-	chan2 chan *packet.Packet
+	chan1 packet.Chan
+	chan2 packet.Chan
 }
 
 func NewUser(ui *UserInfo) *User {
@@ -151,27 +151,27 @@ func NewUser(ui *UserInfo) *User {
 //            <-      <-
 func (u *User) ensureChannel() {
 	if u.chan1 == nil {
-		u.chan1 = make(chan *packet.Packet)
+		u.chan1 = make(packet.Chan)
 	}
 	if u.chan2 == nil {
-		u.chan2 = make(chan *packet.Packet)
+		u.chan2 = make(packet.Chan)
 	}
 }
 
-func (u *User) SendByController(p *packet.Packet) {
-	u.chan2 <- p
-}
+//func (u *User) SendByController(p *packet.Packet) {
+//	u.chan2 <- p
+//}
 
 func (u *User) GetFromController() (
-	fromUser <-chan *packet.Packet, toUser chan<- *packet.Packet) {
+	fromUser packet.RecvChan, toUser packet.SendChan) {
 	u.ensureChannel()
-	return u.chan1, u.chan2
+	return u.chan1.Recv(), u.chan2.Send()
 }
 
 func (u *User) GetFromDataChannel() (
-	fromUser <-chan *packet.Packet, toUser chan<- *packet.Packet) {
+	fromUser packet.RecvChan, toUser packet.SendChan) {
 	u.ensureChannel()
-	return u.chan2, u.chan1
+	return u.chan2.Recv(), u.chan1.Send()
 }
 
 func (u User) String() string {

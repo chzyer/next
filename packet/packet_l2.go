@@ -31,7 +31,28 @@ func NewPacketL2(iv []byte, userId uint16, payload []byte, checksum uint32) *Pac
 	}
 }
 
+func checkPacket(ps []*Packet) {
+	p := recover()
+	if p == nil {
+		return
+	}
+
+	totalSize := 0
+	for idx, pp := range ps {
+		totalSize += pp.TotalSize()
+		println(idx, pp.TotalSize(), totalSize)
+	}
+	buf := make([]byte, totalSize)
+	off := 0
+	for idx, p := range ps {
+		n := p.Marshal(buf[off:])
+		off += n
+		println(idx, n, p.TotalSize(), off)
+	}
+}
+
 func WrapL2(s *Session, p []*Packet) *PacketL2 {
+	defer checkPacket(p)
 	totalSize := 0
 	for _, pp := range p {
 		totalSize += pp.TotalSize()
@@ -39,8 +60,12 @@ func WrapL2(s *Session, p []*Packet) *PacketL2 {
 	buf := make([]byte, totalSize)
 	off := 0
 	for _, pp := range p {
-		pp.Marshal(buf[off:])
-		off += pp.TotalSize()
+		n := pp.Marshal(buf[off:])
+		if n != pp.TotalSize() {
+			logex.Struct(pp, n)
+			panic("!!")
+		}
+		off += n
 	}
 
 	l2 := &PacketL2{

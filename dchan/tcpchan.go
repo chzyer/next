@@ -33,11 +33,11 @@ type TcpChan struct {
 	// runtime
 	exitError error
 
-	in  chan *packet.Packet
-	out chan<- *packet.Packet
+	in  packet.Chan
+	out packet.SendChan
 }
 
-func NewTcpChanClient(f *flow.Flow, session *packet.Session, conn net.Conn, out chan<- *packet.Packet) Channel {
+func NewTcpChanClient(f *flow.Flow, session *packet.Session, conn net.Conn, out packet.SendChan) Channel {
 	ch := NewTcpChanServer(f, session, conn, nil).(*TcpChan)
 	ch.markInit(out)
 	return ch
@@ -51,7 +51,7 @@ func NewTcpChanServer(f *flow.Flow, session *packet.Session, conn net.Conn, dele
 		waitInitChan: make(chan struct{}, 1),
 
 		speed: statistic.NewSpeed(),
-		in:    make(chan *packet.Packet),
+		in:    packet.NewChan(0),
 	}
 	if tcpConn, ok := conn.(*net.TCPConn); ok {
 		tcpConn.SetNoDelay(false)
@@ -62,7 +62,7 @@ func NewTcpChanServer(f *flow.Flow, session *packet.Session, conn net.Conn, dele
 	return ch
 }
 
-func (c *TcpChan) markInit(out chan<- *packet.Packet) {
+func (c *TcpChan) markInit(out packet.SendChan) {
 	c.out = out
 	c.waitInitChan <- struct{}{}
 }
@@ -101,12 +101,9 @@ func (c *TcpChan) writeLoop() {
 		return
 	}
 
-	bufTimer := time.NewTimer(time.Millisecond)
-
 	heartBeatTicker := time.NewTicker(1 * time.Second)
 	defer heartBeatTicker.Stop()
 
-	var bufferingPackets []*packet.Packet
 	var err error
 loop:
 	for {
@@ -118,19 +115,7 @@ loop:
 			err = c.rawWrite([]*packet.Packet{p})
 			c.heartBeat.Add(p)
 		case p := <-c.in:
-			bufTimer.Reset(time.Millisecond)
-			bufferingPackets = append(bufferingPackets, p)
-		buffering:
-			for {
-				select {
-				case <-bufTimer.C:
-					break buffering
-				case p := <-c.in:
-					bufferingPackets = append(bufferingPackets, p)
-				}
-			}
-			err = c.rawWrite(bufferingPackets)
-			bufferingPackets = bufferingPackets[:0]
+			err = c.rawWrite(p)
 		}
 		if err != nil {
 			if !strings.Contains(err.Error(), "closed") {
@@ -195,18 +180,14 @@ loop:
 func (h *TcpChan) onRecePacket(p *packet.Packet) bool {
 	switch p.Type {
 	case packet.HEARTBEAT:
-		select {
-		case h.in <- p.Reply(nil):
-		case <-h.flow.IsClose():
+		if !h.in.SendSafe(h.flow, []*packet.Packet{p.Reply(nil)}) {
 			return false
 		}
 	case packet.HEARTBEAT_R:
 		h.heartBeat.Receive(p)
 	default:
-		select {
-		case <-h.flow.IsClose():
+		if !h.out.SendOneSafe(h.flow, p) {
 			return false
-		case h.out <- p:
 		}
 	}
 	return true
@@ -216,8 +197,8 @@ func (c *TcpChan) Latency() (latency, lastCommit time.Duration) {
 	return c.heartBeat.GetLatency()
 }
 
-func (c *TcpChan) ChanWrite() chan<- *packet.Packet {
-	return c.in
+func (c *TcpChan) ChanWrite() packet.SendChan {
+	return c.in.Send()
 }
 
 func (c *TcpChan) AddOnClose(f func()) {

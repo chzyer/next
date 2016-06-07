@@ -2,9 +2,11 @@ package packet
 
 import (
 	"encoding/binary"
+	"fmt"
 	"math"
 	"runtime"
 
+	"github.com/chzyer/flow"
 	"github.com/chzyer/logex"
 )
 
@@ -22,7 +24,59 @@ var (
 	ErrPayloadTooLarge = logex.Define("payload is too large: %v")
 )
 
-type Packets []*Packet
+type RecvChan <-chan []*Packet
+
+func (c RecvChan) RecvAll(f *flow.Flow) []*Packet {
+	select {
+	case p := <-c:
+		return p
+	case <-f.IsClose():
+		return nil
+	}
+}
+
+type SendChan chan<- []*Packet
+
+func (s SendChan) SendSafe(f *flow.Flow, p []*Packet) bool {
+	select {
+	case s <- p:
+		return true
+	case <-f.IsClose():
+		return false
+	}
+}
+
+func (s SendChan) SendOneSafe(f *flow.Flow, p *Packet) bool {
+	select {
+	case s <- []*Packet{p}:
+		return true
+	case <-f.IsClose():
+		return false
+	}
+}
+
+type Chan chan []*Packet
+
+func NewChan(n int) Chan {
+	return make(chan []*Packet, n)
+}
+
+func (c Chan) Recv() RecvChan {
+	return RecvChan(chan []*Packet(c))
+}
+
+func (c Chan) Send() SendChan {
+	return SendChan(chan []*Packet(c))
+}
+
+func (ch Chan) SendSafe(f *flow.Flow, p []*Packet) bool {
+	select {
+	case ch <- p:
+		return true
+	case <-f.IsClose():
+		return false
+	}
+}
 
 // ReqId + Type + Payload
 type Packet struct {
@@ -96,12 +150,17 @@ func (p *Packet) SetReqId(r Reqider) {
 	}
 }
 
-func (p *Packet) Marshal(ret []byte) {
+func (p *Packet) Marshal(ret []byte) int {
 	// ret := make([]byte, 8+len(p.payload)) // reqId(4) + type(2) + len(payload)
 	binary.BigEndian.PutUint32(ret[:4], p.ReqId)
 	binary.BigEndian.PutUint16(ret[4:6], uint16(p.Type))
 	binary.BigEndian.PutUint16(ret[6:8], uint16(len(p.payload)))
-	copy(ret[8:], p.payload)
+	n := copy(ret[8:], p.payload)
+	if n != len(p.payload) {
+		panic(fmt.Sprintf("short written: %v, want:%v, bufferSize: %v, totalSize: %v",
+			n, len(p.payload), len(ret), p.TotalSize()))
+	}
+	return n + 8
 }
 
 func (p *Packet) TotalSize() int {
