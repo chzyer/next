@@ -50,7 +50,7 @@ func NewHttpChanServer(f *flow.Flow, s *packet.Session, conn net.Conn, delegate 
 		waitInitChan: make(chan struct{}, 1),
 
 		speed: statistic.NewSpeed(),
-		in:    make(chan *packet.Packet),
+		in:    make(chan *packet.Packet, 20),
 	}
 	if tcpConn, ok := conn.(*net.TCPConn); ok {
 		tcpConn.SetNoDelay(false)

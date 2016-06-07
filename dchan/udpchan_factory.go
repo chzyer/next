@@ -40,9 +40,9 @@ func (UdpChanFactory) DialTimeout(host string, timeout time.Duration) (net.Conn,
 }
 
 func (UdpChanFactory) NewClient(f *flow.Flow, session *packet.Session, conn net.Conn, out chan<- *packet.Packet) Channel {
-	return NewTcpChanClient(f, session, conn, out)
+	return NewHttpChanClient(f, session, conn, out)
 }
 
 func (UdpChanFactory) NewServer(f *flow.Flow, session *packet.Session, conn net.Conn, delegate SvrInitDelegate) Channel {
-	return NewTcpChanServer(f, session, conn, delegate)
+	return NewHttpChanServer(f, session, conn, delegate)
 }

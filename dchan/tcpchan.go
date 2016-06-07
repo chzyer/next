@@ -233,8 +233,8 @@ func (c *TcpChan) Close() {
 	} else {
 		logex.Info(c.Name(), "exit manually")
 	}
-	c.conn.Close()
 	c.flow.Close()
+	c.conn.Close()
 }
 
 func (c *TcpChan) GetUserId() (int, error) {
