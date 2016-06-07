@@ -20,18 +20,20 @@ var (
 
 // to simulate http interactive
 type HttpChan struct {
-	flow         *flow.Flow
-	session      *packet.Session
-	in           chan *packet.Packet
-	out          chan<- *packet.Packet
-	onClose      func()
-	conn         net.Conn
-	waitInitChan chan struct{}
+	flow    *flow.Flow
+	session *packet.Session
+	conn    net.Conn
+
 	delegate     SvrInitDelegate
+	waitInitChan chan struct{}
 
 	heartBeat *statistic.HeartBeatStage
 	speed     *statistic.Speed
+
 	exitError error
+
+	in  chan *packet.Packet
+	out chan<- *packet.Packet
 }
 
 func NewHttpChanClient(f *flow.Flow, session *packet.Session, conn net.Conn, out chan<- *packet.Packet) *HttpChan {
@@ -42,12 +44,13 @@ func NewHttpChanClient(f *flow.Flow, session *packet.Session, conn net.Conn, out
 
 func NewHttpChanServer(f *flow.Flow, s *packet.Session, conn net.Conn, delegate SvrInitDelegate) *HttpChan {
 	hc := &HttpChan{
-		session:      s,
 		conn:         conn,
-		speed:        statistic.NewSpeed(),
 		delegate:     delegate,
-		in:           make(chan *packet.Packet),
+		session:      s,
 		waitInitChan: make(chan struct{}, 1),
+
+		speed: statistic.NewSpeed(),
+		in:    make(chan *packet.Packet),
 	}
 	if tcpConn, ok := conn.(*net.TCPConn); ok {
 		tcpConn.SetNoDelay(false)
@@ -66,13 +69,18 @@ func (h *HttpChan) IsSvrModeAndUninit() bool {
 	return h.out == nil
 }
 
+func (h *HttpChan) GetSpeed() *statistic.SpeedInfo {
+	return h.speed.GetSpeed()
+}
+
 func (h *HttpChan) HeartBeatClean(err error) {
 	h.exitError = logex.NewErrorf("clean: %v", err)
 	h.Close()
 }
 
-func (h *HttpChan) AddOnClose(f func()) {
-	h.flow.AddOnClose(f)
+func (h *HttpChan) Run() {
+	go h.writeLoop()
+	go h.readLoop()
 }
 
 func (h *HttpChan) rawWrite(p []*packet.Packet) error {
@@ -200,13 +208,16 @@ func (h *HttpChan) onRecePacket(p *packet.Packet) bool {
 	return true
 }
 
-func (h *HttpChan) Run() {
-	go h.writeLoop()
-	go h.readLoop()
+func (h *HttpChan) Latency() (time.Duration, time.Duration) {
+	return h.heartBeat.GetLatency()
 }
 
-func (h *HttpChan) GetUserId() (int, error) {
-	return h.session.UserId(), nil
+func (h *HttpChan) ChanWrite() chan<- *packet.Packet {
+	return h.in
+}
+
+func (h *HttpChan) AddOnClose(f func()) {
+	h.flow.AddOnClose(f)
 }
 
 func (h *HttpChan) Close() {
@@ -224,6 +235,10 @@ func (h *HttpChan) Close() {
 	h.conn.Close()
 }
 
+func (h *HttpChan) GetUserId() (int, error) {
+	return h.session.UserId(), nil
+}
+
 func (h *HttpChan) Name() string {
 	return fmt.Sprintf("[%v -> %v]",
 		h.conn.LocalAddr(),
@@ -233,16 +248,4 @@ func (h *HttpChan) Name() string {
 
 func (h *HttpChan) GetStat() *statistic.HeartBeat {
 	return h.heartBeat.GetStat()
-}
-
-func (h *HttpChan) Latency() (time.Duration, time.Duration) {
-	return h.heartBeat.GetLatency()
-}
-
-func (h *HttpChan) GetSpeed() *statistic.SpeedInfo {
-	return h.speed.GetSpeed()
-}
-
-func (h *HttpChan) ChanWrite() chan<- *packet.Packet {
-	return h.in
 }

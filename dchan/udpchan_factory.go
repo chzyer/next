@@ -6,6 +6,7 @@ import (
 
 	"github.com/chzyer/flow"
 	"github.com/chzyer/next/packet"
+	"github.com/xtaci/kcp-go"
 )
 
 type UdpChanFactory struct {
@@ -18,20 +19,24 @@ func NewUdpChanFactory() *UdpChanFactory {
 	}
 }
 
+type wrapLn struct {
+	*kcp.Listener
+}
+
+func (w *wrapLn) Accept() (net.Conn, error) {
+	return w.Listener.Accept()
+}
+
 func (u *UdpChanFactory) Listen(f *flow.Flow) (net.Listener, error) {
-	addr, err := net.ResolveUDPAddr("udp", ":0")
+	ln, err := kcp.Listen(":0")
 	if err != nil {
 		return nil, err
 	}
-	conn, err := net.ListenUDP("udp", addr)
-	if err != nil {
-		return nil, err
-	}
-	return NewUDPListener(f, conn), nil
+	return &wrapLn{ln}, nil
 }
 
 func (UdpChanFactory) DialTimeout(host string, timeout time.Duration) (net.Conn, error) {
-	return net.DialTimeout("udp", host, timeout)
+	return kcp.Dial(host)
 }
 
 func (UdpChanFactory) NewClient(f *flow.Flow, session *packet.Session, conn net.Conn, out chan<- *packet.Packet) Channel {

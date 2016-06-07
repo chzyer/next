@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/chzyer/flow"
@@ -50,7 +51,7 @@ func NewTcpChanServer(f *flow.Flow, session *packet.Session, conn net.Conn, dele
 		waitInitChan: make(chan struct{}, 1),
 
 		speed: statistic.NewSpeed(),
-		in:    make(chan *packet.Packet, 8),
+		in:    make(chan *packet.Packet),
 	}
 	if tcpConn, ok := conn.(*net.TCPConn); ok {
 		tcpConn.SetNoDelay(false)
@@ -86,7 +87,8 @@ func (c *TcpChan) Run() {
 
 func (c *TcpChan) rawWrite(p []*packet.Packet) error {
 	l2 := packet.WrapL2(c.session, p)
-	n, err := c.conn.Write(c.WriteL2(l2))
+	data := c.WriteL2(l2)
+	n, err := c.conn.Write(data)
 	c.speed.Upload(n)
 	return err
 }
@@ -99,7 +101,7 @@ func (c *TcpChan) writeLoop() {
 		return
 	}
 
-	bufTimer := time.NewTimer(0)
+	bufTimer := time.NewTimer(time.Millisecond)
 
 	heartBeatTicker := time.NewTicker(1 * time.Second)
 	defer heartBeatTicker.Stop()
@@ -131,14 +133,12 @@ loop:
 			bufferingPackets = bufferingPackets[:0]
 		}
 		if err != nil {
-			c.exitError = logex.NewErrorf("write error: %v", err)
+			if !strings.Contains(err.Error(), "closed") {
+				c.exitError = logex.NewErrorf("write error: %v", err)
+			}
 			break
 		}
 	}
-}
-
-func (TcpChan) Factory() ChannelFactory {
-	return TcpChanFactory{}
 }
 
 func (c *TcpChan) readLoop() {
@@ -148,12 +148,20 @@ func (c *TcpChan) readLoop() {
 	buf := bufio.NewReader(c.conn)
 loop:
 	for !c.flow.IsClosed() {
-		c.conn.SetReadDeadline(time.Now().Add(10 * time.Second))
+		c.conn.SetReadDeadline(time.Now().Add(5 * time.Second))
 		l2, err := c.ReadL2(buf)
 		if err != nil {
-			c.exitError = logex.NewErrorf("read error: %v", err)
+			if err, ok := err.(*net.OpError); ok {
+				if err.Temporary() || err.Timeout() {
+					continue
+				}
+			}
+			if !strings.Contains(err.Error(), "closed") {
+				c.exitError = logex.NewErrorf("read error: %v", err)
+			}
 			break
 		}
+
 		if err := l2.Verify(c.session); err != nil {
 			c.exitError = logex.NewErrorf("verify error: %v", err)
 			break
@@ -177,24 +185,31 @@ loop:
 
 		for _, p := range ps {
 			c.speed.Download(p.Size())
-			switch p.Type {
-			case packet.HEARTBEAT:
-				select {
-				case c.in <- p.Reply(c.heartBeat.Now()):
-				case <-c.flow.IsClose():
-					break loop
-				}
-			case packet.HEARTBEAT_R:
-				c.heartBeat.Receive(p)
-			default:
-				select {
-				case <-c.flow.IsClose():
-					break loop
-				case c.out <- p:
-				}
+			if !c.onRecePacket(p) {
+				break loop
 			}
 		}
 	}
+}
+
+func (h *TcpChan) onRecePacket(p *packet.Packet) bool {
+	switch p.Type {
+	case packet.HEARTBEAT:
+		select {
+		case h.in <- p.Reply(nil):
+		case <-h.flow.IsClose():
+			return false
+		}
+	case packet.HEARTBEAT_R:
+		h.heartBeat.Receive(p)
+	default:
+		select {
+		case <-h.flow.IsClose():
+			return false
+		case h.out <- p:
+		}
+	}
+	return true
 }
 
 func (c *TcpChan) Latency() (latency, lastCommit time.Duration) {
@@ -224,14 +239,6 @@ func (c *TcpChan) Close() {
 
 func (c *TcpChan) GetUserId() (int, error) {
 	return c.session.UserId(), nil
-}
-
-func (c *TcpChan) Src() net.Addr {
-	return c.conn.LocalAddr()
-}
-
-func (c *TcpChan) Dst() net.Addr {
-	return c.conn.RemoteAddr()
 }
 
 func (c *TcpChan) Name() string {
