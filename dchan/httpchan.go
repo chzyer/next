@@ -176,7 +176,7 @@ func (h *HttpChan) onRecePacket(ps []*packet.Packet) bool {
 		h.speed.Download(p.Size())
 		switch p.Type {
 		case packet.HEARTBEAT:
-			if !h.in.SendSafe(h.flow, []*packet.Packet{p.Reply(nil)}) {
+			if !h.in.SendSafe(h.flow, []*packet.Packet{p.Reply(p.Payload())}) {
 				return false
 			}
 		case packet.HEARTBEAT_R:
@@ -186,7 +186,7 @@ func (h *HttpChan) onRecePacket(ps []*packet.Packet) bool {
 		}
 	}
 
-	if !h.out.SendSafe(h.flow, ps) {
+	if !h.out.SendSafe(h.flow, buffer) {
 		return false
 	}
 	return true

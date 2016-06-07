@@ -180,7 +180,7 @@ loop:
 func (h *TcpChan) onRecePacket(p *packet.Packet) bool {
 	switch p.Type {
 	case packet.HEARTBEAT:
-		if !h.in.SendSafe(h.flow, []*packet.Packet{p.Reply(nil)}) {
+		if !h.in.SendSafe(h.flow, []*packet.Packet{p.Reply(p.Payload())}) {
 			return false
 		}
 	case packet.HEARTBEAT_R:

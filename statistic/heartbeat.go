@@ -107,7 +107,7 @@ func (s *HeartBeat) submitDrop(n int) {
 }
 
 func (s *HeartBeat) submitDuration(d time.Duration) {
-	logex.Debug(d.String())
+	// logex.DownLevel(1).Debug(d.String())
 	slot := s.getSlot()
 	atomic.StoreInt64(&s.lastCommit, time.Now().Unix())
 	slot.total += d
@@ -181,6 +181,11 @@ func (h *HeartBeatStage) Now() []byte {
 	return ret
 }
 
+func (h *HeartBeatStage) getTime(b []byte) time.Time {
+	t := binary.BigEndian.Uint64(b)
+	return time.Unix(0, int64(t))
+}
+
 func (h *HeartBeatStage) GetTime(p *packet.Packet) time.Time {
 	nano := binary.BigEndian.Uint64(p.Payload())
 	return time.Unix(0, int64(nano))
@@ -242,14 +247,18 @@ loop:
 			break loop
 		case <-ticker.C:
 			h.findElem(0) // just clean up
-		case iv := <-h.receiveChan:
-			elem := h.findElem(iv.ReqId)
+		case pkt := <-h.receiveChan:
+			elem := h.findElem(pkt.ReqId)
 			if elem == nil {
 				// stat
 				continue
 			}
 
-			h.stat.submitDuration(time.Now().Sub(h.item(elem).time))
+			timeStart := h.getTime(pkt.Payload())
+			logex.Debugf("two time: mem - payload = %v",
+				h.item(elem).time.Sub(timeStart),
+			)
+			h.stat.submitDuration(time.Now().Sub(timeStart))
 			h.staging.Remove(elem)
 		case iv := <-h.addChan:
 			h.staging.PushBack(heartBeatItem{iv.ReqId, time.Now()})

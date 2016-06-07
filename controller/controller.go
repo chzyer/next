@@ -125,7 +125,6 @@ func (c *Controller) handlePacket(ps []*packet.Packet) bool {
 	newPs := make([]*packet.Packet, 0, len(ps))
 	for _, p := range ps {
 		if p.Type.IsResp() {
-			// println("I got Reply:", p.IV.ReqId)
 			req := c.stage.Remove(p.ReqId)
 			if req != nil && req.Reply != nil {
 				select {
@@ -137,7 +136,6 @@ func (c *Controller) handlePacket(ps []*packet.Packet) bool {
 		newPs = append(newPs, p)
 	}
 
-	// println("I need Reply to:", p.IV.ReqId)
 	select {
 	case c.out <- newPs:
 	case <-c.flow.IsClose():
