@@ -20,5 +20,6 @@ func (c *Config) FlaglyHandle(f *flow.Flow) error {
 	if err != nil {
 		return err
 	}
+	_ = tun
 	return nil
 }
