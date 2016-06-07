@@ -133,9 +133,8 @@ func (c *Controller) handlePacket(ps []*packet.Packet) bool {
 				default:
 				}
 			}
-		} else {
-			newPs = append(newPs, p)
 		}
+		newPs = append(newPs, p)
 	}
 
 	// println("I need Reply to:", p.IV.ReqId)
