@@ -18,7 +18,7 @@ func (c *Config) FlaglyHandle(f *flow.Flow) error {
 		MTU:     1500,
 	})
 	if err != nil {
-		return error
+		return err
 	}
 	return nil
 }
