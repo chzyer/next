@@ -77,7 +77,7 @@ $ watch -n 1 next shell dchan list
 [1.1.1.1:61920 -> 2.2.2.2:34667]: RTT: 780ms 780ms 336ms, LC: 1s, LT: 4m0s [*]
 [1.1.1.1:61917 -> 2.2.2.2:50859]: RTT: 786ms 786ms 395ms, LC: 0, LT: 4m1s [*]
 
-# RTT: round trip time
+# RTT: round trip time, (15min, 5min, 1min)
 # LC: last commit time
 # LT: life time
 # [*]: data channels which is usable
