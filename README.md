@@ -71,7 +71,7 @@ download: 84B/s
 
 ### show data channels
 ```shell
-$ watch -n 1 next shell dchan useful
+$ watch -n 1 next shell dchan list
 [1.1.1.1:62019 -> 2.2.2.2:36152]: RTT: 767ms 767ms 516ms, LC: 0, LT: 2m13s
 [1.1.1.1:61992 -> 2.2.2.2:47453]: RTT: 639ms 639ms 390ms, LC: 0, LT: 2m37s [*]
 [1.1.1.1:61920 -> 2.2.2.2:34667]: RTT: 780ms 780ms 336ms, LC: 1s, LT: 4m0s [*]
