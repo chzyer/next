@@ -72,13 +72,14 @@ download: 84B/s
 ### show data channels
 ```shell
 $ watch -n 1 next shell dchan useful
-[1.1.1.1:63742 -> 2.2.2.2:42066]: avg: 34ms 52ms 56ms, drop: 0/894 0/294 0/54
-[1.1.1.1:63741 -> 2.2.2.2:50701]: avg: 34ms 52ms 56ms, drop: 0/894 0/294 0/54
-[1.1.1.1:63738 -> 2.2.2.2:42320]: avg: 36ms 55ms 56ms, drop: 0/894 0/294 0/54
-[1.1.1.1:63737 -> 2.2.2.2:47205]: avg: 36ms 54ms 55ms, drop: 0/894 0/294 0/54
-[1.1.1.1:63734 -> 2.2.2.2:47205]: avg: 36ms 56ms 55ms, drop: 0/894 0/294 0/54
+[1.1.1.1:62019 -> 2.2.2.2:36152]: RTT: 767ms 767ms 516ms, LC: 0, LT: 2m13s
+[1.1.1.1:61992 -> 2.2.2.2:47453]: RTT: 639ms 639ms 390ms, LC: 0, LT: 2m37s [*]
+[1.1.1.1:61920 -> 2.2.2.2:34667]: RTT: 780ms 780ms 336ms, LC: 1s, LT: 4m0s [*]
+[1.1.1.1:61917 -> 2.2.2.2:50859]: RTT: 786ms 786ms 395ms, LC: 0, LT: 4m1s [*]
 
-# avg: mean value of roundtrip time, (15min, 5min, 1min)
-# drop: packet count which is droped by remote. (droped packet / total packet)
+# RTT: round trip time
+# LC: last commit time
+# LT: life time
+# [*]: data channels which is usable
 ```
 
