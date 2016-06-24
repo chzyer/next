@@ -10,7 +10,7 @@ $ go get github.com/chzyer/next
 ### server
 
 ```shell
-$ next sysenv #
+$ next sysenv -iface eth0 # enable ipforward and NAT, only work for linux
 $ next genkey
 617e819c1551a6be8e31b76ed5cb8157
 $ next server -key 617e819c1551a6be8e31b76ed5cb8157

@@ -24,7 +24,7 @@ func handleListener(ln *UDPListener) {
 	}
 }
 
-func TestUdpChan(t *testing.T) {
+func nTestUdpChan(t *testing.T) {
 	defer test.New(t)
 
 	addr, err := net.ResolveUDPAddr("udp", ":0")
