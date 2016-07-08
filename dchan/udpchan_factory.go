@@ -24,7 +24,13 @@ type wrapLn struct {
 }
 
 func (w *wrapLn) Accept() (net.Conn, error) {
-	return w.Listener.Accept()
+	sess, err := w.Listener.Accept()
+	if err != nil {
+		return nil, err
+	}
+	sess.SetMtu(1350)
+	sess.SetNoDelay(1, 10, 2, 1)
+	return sess, nil
 }
 
 func (u *UdpChanFactory) Listen(f *flow.Flow) (net.Listener, error) {
@@ -36,7 +42,13 @@ func (u *UdpChanFactory) Listen(f *flow.Flow) (net.Listener, error) {
 }
 
 func (UdpChanFactory) DialTimeout(host string, timeout time.Duration) (net.Conn, error) {
-	return kcp.Dial(host)
+	sess, err := kcp.Dial(host)
+	if err != nil {
+		return nil, err
+	}
+	sess.SetMtu(1350)
+	sess.SetNoDelay(1, 10, 2, 1)
+	return sess, nil
 }
 
 func (UdpChanFactory) NewClient(f *flow.Flow, session *packet.Session, conn net.Conn, out packet.SendChan) Channel {
