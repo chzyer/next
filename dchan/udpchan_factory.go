@@ -20,7 +20,7 @@ func NewUdpChanFactory() *UdpChanFactory {
 }
 
 type wrapLn struct {
-	*kcp.Listener
+	net.Listener
 }
 
 func (w *wrapLn) Accept() (net.Conn, error) {
@@ -28,9 +28,9 @@ func (w *wrapLn) Accept() (net.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	sess.SetMtu(1350)
-	sess.SetNoDelay(1, 20, 2, 1)
-	sess.SetWindowSize(2048, 2048)
+	// sess.SetMtu(1350)
+	// sess.SetNoDelay(1, 20, 2, 1)
+	// sess.SetWindowSize(2048, 2048)
 	return sess, nil
 }
 
@@ -47,9 +47,9 @@ func (UdpChanFactory) DialTimeout(host string, timeout time.Duration) (net.Conn,
 	if err != nil {
 		return nil, err
 	}
-	sess.SetMtu(1350)
-	sess.SetNoDelay(1, 20, 2, 1)
-	sess.SetWindowSize(256, 2048)
+	// sess.SetMtu(1350)
+	// sess.SetNoDelay(1, 20, 2, 1)
+	// sess.SetWindowSize(256, 2048)
 	return sess, nil
 }
 

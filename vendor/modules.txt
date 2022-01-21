@@ -1,0 +1,68 @@
+# github.com/chzyer/flagly v1.0.0
+## explicit
+github.com/chzyer/flagly
+# github.com/chzyer/flow v0.0.0-20160617073803-62b22e3ff5c3
+## explicit
+github.com/chzyer/flow
+# github.com/chzyer/logex v1.1.10
+## explicit
+github.com/chzyer/logex
+# github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e
+## explicit
+github.com/chzyer/readline
+# github.com/chzyer/test v0.0.0-20210722231415-061457976a23
+## explicit
+github.com/chzyer/test
+# github.com/chzyer/tunnel v0.0.0-20160504081543-1958f31c0081
+## explicit
+github.com/chzyer/tunnel
+# github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
+## explicit
+github.com/google/shlex
+# github.com/klauspost/cpuid/v2 v2.0.6
+github.com/klauspost/cpuid/v2
+# github.com/klauspost/crc32 v1.2.0
+## explicit
+github.com/klauspost/crc32
+# github.com/klauspost/reedsolomon v1.9.13
+## explicit
+github.com/klauspost/reedsolomon
+# github.com/pkg/errors v0.9.1
+## explicit
+github.com/pkg/errors
+# github.com/templexxx/cpufeat v0.0.0-20180724012125-cef66df7f161
+## explicit
+github.com/templexxx/cpufeat
+# github.com/templexxx/xor v0.0.0-20191217153810-f85b25db303b
+## explicit
+github.com/templexxx/xor
+# github.com/tjfoc/gmsm v1.4.1
+## explicit
+github.com/tjfoc/gmsm/sm4
+# github.com/xtaci/kcp-go v5.4.20+incompatible
+## explicit
+github.com/xtaci/kcp-go
+# github.com/xtaci/lossyconn v0.0.0-20200209145036-adba10fffc37
+## explicit
+# golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
+## explicit
+golang.org/x/crypto/blowfish
+golang.org/x/crypto/cast5
+golang.org/x/crypto/internal/subtle
+golang.org/x/crypto/pbkdf2
+golang.org/x/crypto/salsa20
+golang.org/x/crypto/salsa20/salsa
+golang.org/x/crypto/tea
+golang.org/x/crypto/twofish
+golang.org/x/crypto/xtea
+# golang.org/x/net v0.0.0-20210924151903-3ad01bbaa167
+## explicit
+golang.org/x/net/bpf
+golang.org/x/net/internal/iana
+golang.org/x/net/internal/socket
+golang.org/x/net/ipv4
+golang.org/x/net/ipv6
+# golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c
+golang.org/x/sys/internal/unsafeheader
+golang.org/x/sys/unix
+golang.org/x/sys/windows
